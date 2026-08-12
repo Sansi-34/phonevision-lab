@@ -163,6 +163,23 @@ STRINGS = {
     "toast_conn_error": ("连接错误", "Connection error"),
     "toast_restored": ("连接已恢复", "Connection restored"),
     "toast_save_failed": ("保存失败: {error}", "Save failed: {error}"),
+
+    # ---------- 连接启动页（ConnectionDialog） ----------
+    "connect_title": ("PhoneVision Lab", "PhoneVision Lab"),
+    "version_label": ("版本: {version}", "Version: {version}"),
+    "enter_ip_label": ("手机 IP 或主机名", "Phone IP or hostname"),
+    "ip_placeholder": ("例如 192.168.1.100", "e.g. 192.168.1.100"),
+    "port_label": ("端口", "Port"),
+    "language_label": ("语言", "Language"),
+    "connect_button": ("连接", "Connect"),
+    "cancel_button": ("取消 / 退出", "Cancel / Exit"),
+    "connecting_text": ("正在连接...", "Connecting..."),
+    "step_1": ("1. 手机打开 PhoneVision Lab", "1. Open PhoneVision Lab on the phone"),
+    "step_2": ("2. 点击开始推流", "2. Tap Start Streaming"),
+    "step_3": ("3. 输入手机界面显示的 IP", "3. Enter the IP shown on the phone"),
+    "error_host_required": ("请输入手机 IP 或主机名", "Enter the phone IP or hostname"),
+    "error_port_invalid": ("端口必须是 1-65535 的数字", "Port must be a number from 1 to 65535"),
+    "error_unknown": ("连接失败，请检查网络后重试", "Connection failed, check the network and retry"),
 }
 
 # 缺失 key 的显式回退模板：绝不清空白，界面上一眼可见。
