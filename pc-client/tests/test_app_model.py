@@ -22,11 +22,18 @@ import unittest
 from unittest import mock
 from dataclasses import FrozenInstanceError
 
+import numpy as np
+
 import app_model
 
 
 class FakeReader:
-    """替代 mjpeg_reader.MjpegReader 的可控假体。"""
+    """替代 mjpeg_reader.MjpegReader 的可控假体。
+
+    帧新鲜度测试需要"reader 是否真的持有一帧"来区分：stale 时 AppModel 会在
+    get_latest_frame 里挡住帧；非 stale 时返回 reader 持有的帧。因此提供
+    set_frame() 让假体可持有帧，get_latest_frame 返回该帧或 (None, None)。
+    """
 
     def __init__(self, stream_url=""):
         self.url = stream_url
@@ -34,6 +41,8 @@ class FakeReader:
         self.stopped = False
         self._stats = {"state": "Streaming", "received": 0, "invalid": 0,
                        "bytes": 0, "last_error": None}
+        self._frame = None
+        self._frame_num = None
 
     def start(self):
         self.started = True
@@ -41,8 +50,13 @@ class FakeReader:
     def stop(self):
         self.stopped = True
 
+    def set_frame(self, frame, num=None):
+        """模拟 reader 收到一帧：供 get_latest_frame 返回（配合新鲜度测试）。"""
+        self._frame = frame
+        self._frame_num = num
+
     def get_latest_frame(self):
-        return None, None
+        return self._frame, self._frame_num
 
     def get_state(self):
         return self._stats["state"]
@@ -428,6 +442,269 @@ class AppModelTest(unittest.TestCase):
         self.assertEqual(app_model.STATE_STREAMING, "Streaming")
         self.assertEqual(app_model.STATE_RECONNECTING, "Reconnecting")
         self.assertEqual(app_model.STATE_STOPPED, "Stopped")
+
+
+class FrameFreshnessTest(unittest.TestCase):
+    """AppModel 帧新鲜度语义测试（P0-3E）。
+
+    覆盖：首帧可读、阈值内可用、超阈值 stale、refresh 次数不刷新鲜度、
+    新帧立即恢复、reader 更换计数归零后的识别、stop 后 stale。
+
+    为什么这样设计：
+      - 全部离线、确定性：用 FakeReader 的 set_stats 模拟 reader 收到新帧
+        （received 计数增加），用 FakeClock 推进 time.monotonic，绝不真实 sleep。
+      - 帧新鲜度由 refresh() 内部调用 _update_frame_freshness()，其内部用
+        time.monotonic() 取时间，所以统一 patch app_model.time.monotonic。
+      - FakeReader 没有真实计数递增机制，"新帧到达"= 用 set_stats(received=N)
+        增大计数；"无新帧"= 计数保持不变。真实 reader 中计数每解析一帧 +1。
+    """
+
+    def setUp(self):
+        self.patcher = mock.patch("app_model.mjpeg_reader.MjpegReader", FakeReader)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.model = app_model.AppModel("http://fake/stream", "http://fake/ping")
+        self.model.start()
+        self.reader = self.model._reader
+        self.clock = FakeClock(1000.0)
+        self.addCleanup(self.model.stop)
+
+    def _refresh(self):
+        """在 fake clock 下刷新：帧新鲜度判断与 FPS 统计都走这个入口。"""
+        with mock.patch("app_model.time.monotonic", side_effect=self.clock.monotonic):
+            self.model.refresh()
+
+    def _snapshot(self):
+        with mock.patch("app_model.time.monotonic", side_effect=self.clock.monotonic):
+            return self.model.snapshot()
+
+    def _expect_frame(self, msg):
+        frame, num = self.model.get_latest_frame()
+        self.assertIsNotNone(frame, msg)
+        return frame, num
+
+    def test_first_frame_readable(self):
+        """首帧到达后即可读取：收到 received=1 后 get_latest_frame 返回帧。"""
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()
+        # 首帧必须立即可读，不能因为"之前没有新帧"而挡在门外
+        got, num = self._expect_frame("首帧到达后应返回帧")
+        self.assertIs(got, frame)
+        self.assertEqual(num, 1)
+        self.assertFalse(self._snapshot().frame_stale)
+
+    def test_same_frame_usable_within_threshold(self):
+        """同一帧在阈值内仍可用：received 不变，多次 refresh 后帧仍非 stale。
+
+        真实场景：收到一帧后缓存它，GUI 以 ~30fps 高频刷新显示。只要没超过
+        3 秒无新帧，这帧应持续可显示，刷新次数多不改变新鲜度。
+        """
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()  # 收到首帧，时间戳记在 t=1000.0
+
+        # 2.9 秒内高频刷新，received 一直不变
+        for _ in range(5):
+            self.clock.advance(0.58)
+            self._refresh()
+        self.assertLess(self._snapshot().frame_age_seconds, app_model.FRAME_STALE_TIMEOUT_SECONDS)
+        got, _ = self._expect_frame("阈值内同一帧仍应可读")
+        self.assertIs(got, frame)
+        self.assertFalse(self._snapshot().frame_stale)
+
+    def test_stale_after_threshold(self):
+        """同一帧超过阈值后 stale：get_latest_frame 返回 (None, None)，快照标记 stale。"""
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()  # t=1000.0 收到首帧
+
+        self.clock.advance(app_model.FRAME_STALE_TIMEOUT_SECONDS + 0.1)
+        self.reader.set_frame(None)  # 恢复成"无帧"假体语义：stale 时模型层应挡住帧
+        self._refresh()
+        # stale 后 get_latest_frame 必须挡在模型层，返回 (None, None)
+        self.assertEqual(self.model.get_latest_frame(), (None, None))
+        snap = self._snapshot()
+        self.assertTrue(snap.frame_stale)
+        self.assertGreater(snap.frame_age_seconds, app_model.FRAME_STALE_TIMEOUT_SECONDS)
+
+    def test_no_new_frame_does_not_extend_freshness(self):
+        """没有新帧时，refresh 次数再多也不刷新时间戳。
+
+        防止退化实现"只要 refresh 就被当作有帧"：那样时间戳随 refresh 不断前移，
+        断流永远测不出 stale。这里 4 次 refresh 各前进 1 秒，received 不变，
+        时间前进 4 秒后应 stale——若每次 refresh 都刷时间戳，就不会 stale。
+        """
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()  # t=1000.0 收到首帧
+
+        self.reader.set_frame(None)  # 断言前先恢复"无帧"语义
+        # 4 次 refresh，时间各前进 1 秒，received 始终为 1（无新帧）
+        for _ in range(4):
+            self.clock.advance(1.0)
+            self._refresh()
+        self.assertTrue(self._snapshot().frame_stale,
+                        "无新帧时 refresh 次数不应延长新鲜度")
+
+    def test_new_frame_recovers_after_stale(self):
+        """陈旧后新帧到达立即恢复：received 增加，帧可读且 frame_stale=False。"""
+        frame1 = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame1, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()
+        self.clock.advance(app_model.FRAME_STALE_TIMEOUT_SECONDS + 0.1)
+        self._refresh()  # 已 stale
+
+        # 新帧到达：received 从 1 增到 2
+        frame2 = np.zeros((48, 64, 3), dtype=np.uint8) + 255
+        self.reader.set_frame(frame2, num=2)
+        self.reader.set_stats(state="Streaming", received=2, invalid=0, bytes=200)
+        self._refresh()
+        got, num = self._expect_frame("新帧到达后应立即可读")
+        self.assertIs(got, frame2)
+        self.assertEqual(num, 2)
+        self.assertFalse(self._snapshot().frame_stale)
+
+    def test_reader_swap_counter_reset(self):
+        """reader 更换且计数归零（received 从 N 降到 0）后能正确识别新帧。
+
+        reconnect 后新 reader 计数从 0 重新开始（计数下降）。delta<0 时应重置
+        观察基线并回到 stale；随后新 reader 收到首帧（received 升到 1）即恢复。
+        若不重置基线，received=1 < 旧基线 50 会一直被当作"没有新帧"。
+        """
+        old = self.model._reader
+        old.set_stats(state="Streaming", received=50, invalid=0, bytes=5000)
+        self._refresh()  # 旧 reader 已收 50 帧
+
+        # 模拟重连换新 reader：计数归零（下降）
+        new = FakeReader("http://fake/stream")
+        new.set_stats(state="Idle", received=0, invalid=0, bytes=0)
+        self.model._reader = new
+        self.model._state = app_model.STATE_RECONNECTING
+        self._refresh()
+        self.assertTrue(self._snapshot().frame_stale, "计数归零后应回到 stale")
+
+        # 新 reader 收到首帧：计数升到 1，应被识别为新帧并恢复
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        new.set_frame(frame, num=1)
+        new.set_stats(state="Streaming", received=1, invalid=0, bytes=300)
+        self.clock.advance(0.1)
+        self._refresh()
+        got, num = self._expect_frame("新 reader 首帧应被识别并恢复显示")
+        self.assertIs(got, frame)
+        self.assertEqual(num, 1)
+        self.assertFalse(self._snapshot().frame_stale)
+        self.model._reader = old  # 还原，避免 tearDown 的 stop 影响后续
+
+    def test_stop_marks_frame_stale(self):
+        """stop 后帧不可显示：get_latest_frame 返回 (None, None)。
+
+        用户点"退出"后不应再显示旧画面。stop() 立即把 reader 置 None，
+        get_latest_frame 因此返回 (None, None)——这是 UI 消费的唯一入口，
+        足以保证旧帧不再显示。
+
+        为什么不断言 snapshot().frame_stale：该字段由 refresh() 内的
+        _update_frame_freshness() 维护，stop 后 GUI 不再调用 refresh，字段保持
+        停止前的值。可显示的保证由 get_latest_frame 的 (None, None) 承担。
+        """
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()
+        self.assertFalse(self._snapshot().frame_stale)
+
+        self.model.stop()
+        self.assertEqual(self.model.get_latest_frame(), (None, None))
+        snap = self._snapshot()
+        self.assertEqual(snap.connection_state, app_model.STATE_STOPPED)
+
+
+class PingAndVideoIndependentTest(unittest.TestCase):
+    """ping 结果与视频新鲜度相互独立（P0-3E）。
+
+    为什么这样设计：验收点"ping 成功但视频断流"不能被 ping 掩盖——断流识别
+    只由帧新鲜度决定；ping 失败但视频仍在推流也必须继续显示实时画面。两类测试
+    都用 fake clock + FakeReader.set_stats 离线验证，不需要真实网络。
+    """
+
+    def setUp(self):
+        self.patcher = mock.patch("app_model.mjpeg_reader.MjpegReader", FakeReader)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.model = app_model.AppModel("http://fake/stream", "http://fake/ping")
+        self.model.start()
+        self.reader = self.model._reader
+        self.clock = FakeClock(1000.0)
+        self.addCleanup(self.model.stop)
+
+    def _refresh(self):
+        with mock.patch("app_model.time.monotonic", side_effect=self.clock.monotonic):
+            self.model.refresh()
+
+    def _snapshot(self):
+        with mock.patch("app_model.time.monotonic", side_effect=self.clock.monotonic):
+            return self.model.snapshot()
+
+    def test_ping_failure_still_shows_live_frame(self):
+        """ping 失败但持续有新帧时仍显示实时帧。
+
+        模拟：/ping 抛异常（断网），但 reader 仍在收帧（received 持续增加）。
+        帧新鲜度只由 received 决定，与 ping 成败无关，因此应保持 frame_stale=False，
+        get_latest_frame 返回实时帧。
+        """
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()
+
+        # 连续多轮：ping 失败 + 每轮 received 增加（新帧持续到达）
+        with mock.patch("app_model.requests.get", side_effect=Exception("network down")):
+            for n in range(2, 6):
+                self.clock.advance(0.2)
+                frame_n = np.zeros((48, 64, 3), dtype=np.uint8) + n
+                self.reader.set_frame(frame_n, num=n)
+                self.reader.set_stats(state="Streaming", received=n, invalid=0, bytes=n * 100)
+                self._refresh()
+                got, _ = self._expect_frame(f"ping 失败但第 {n} 帧应仍实时显示")
+                self.assertIs(got, frame_n)
+                self.assertFalse(self._snapshot().frame_stale)
+
+    def test_ping_ok_but_no_frames_goes_stale(self):
+        """ping 成功但无新帧超过阈值时仍进入 stale。
+
+        模拟：/ping 正常返回（后台 worker 更新 phone_fps），但 reader 停在
+        received=1 不再有新帧。时间前进超过阈值后必须 stale——防止"ping 成功
+        掩盖视频断流"。
+        """
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        self.reader.set_frame(frame, num=1)
+        self.reader.set_stats(state="Streaming", received=1, invalid=0, bytes=100)
+        self._refresh()
+        self.assertFalse(self._snapshot().frame_stale)
+
+        # ping 成功：模拟后台 worker 已更新 phone_fps 与 last_ping_time
+        with mock.patch("app_model.time.monotonic", side_effect=self.clock.monotonic):
+            self.model._phone_fps = 15.0
+            self.model._last_ping_time = self.clock.now
+
+        # 无新帧，时间前进超过阈值
+        self.clock.advance(app_model.FRAME_STALE_TIMEOUT_SECONDS + 0.1)
+        self.reader.set_frame(None)  # stale 时模型层应挡住帧
+        self._refresh()
+        self.assertEqual(self.model.get_latest_frame(), (None, None))
+        snap = self._snapshot()
+        self.assertTrue(snap.frame_stale, "ping 正常也不能掩盖视频断流")
+        self.assertEqual(snap.phone_fps, 15.0)  # ping 统计仍更新，互不干扰
+
+    def _expect_frame(self, msg):
+        frame, num = self.model.get_latest_frame()
+        self.assertIsNotNone(frame, msg)
+        return frame, num
 
 
 if __name__ == "__main__":

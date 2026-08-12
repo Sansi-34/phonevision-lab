@@ -43,6 +43,13 @@ import vision_modes
 CAPTURES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "captures")
 
+# 渲染类型常量：画面区当前显示内容的语义分类。
+# 用于"类型或连接状态不变"时跳过重复创建占位 QPixmap（30/60Hz 刷新下省 CPU）。
+RENDER_FRAME = "frame"
+RENDER_CONNECTING = "connecting-placeholder"
+RENDER_RECONNECTING = "reconnecting-placeholder"
+RENDER_STOPPED = "stopped-placeholder"
+
 
 class MainWindow(QMainWindow):
     """PhoneVision Lab 主窗口。"""
@@ -76,6 +83,10 @@ class MainWindow(QMainWindow):
         }
         self._last_frame_num = None
         self._qimg = None  # 保引用，防止 QImage 底层数据被回收
+        # 画面区当前渲染类型与占位时的连接状态快照：
+        # 类型/状态没变时跳过重建占位 QPixmap；收到新帧立即重置。
+        self._render_type = None
+        self._placeholder_state = None
 
         # ---- 共享客户端状态模型（网络 / 统计 / 生命周期唯一来源）----
         self.model = app_model.AppModel(
@@ -383,23 +394,38 @@ class MainWindow(QMainWindow):
             self.stats["error"] = str(e)
 
     def _update_frame(self):
+        # 共享模型帧新鲜度语义：未收到首帧或超过阈值（3s）无新帧时
+        # 返回 (None, None)，进入占位分支，替换旧画面。
         frame, num = self.reader.get_latest_frame()
         if num is not None and num == self._last_frame_num:
-            return
+            return  # 同帧去重：帧号没变，跳过重复处理与重建
         self._last_frame_num = num
 
         snap = self.model.snapshot()
         if frame is not None:
+            # 收到新帧（含恢复后第一张新帧）：立即替换占位画面并重置占位状态
+            self._render_type = RENDER_FRAME
+            self._placeholder_state = None
             disp = vision_modes.apply_mode(self.mode, frame, self.params)
             self.model.mark_frame_displayed()  # 通知共享模型：本帧已显示
             self._show_frame(disp)
         else:
-            # 断流/重连占位画面（与 Tkinter 版对齐）
-            placeholder = np.zeros((360, 640, 3), dtype=np.uint8)
-            if snap.connection_state == "Reconnecting":
-                text = "连接断开，正在重连..."
+            # 断流/未连接占位分支。占位图必须用 np.zeros 构造纯背景再画字，
+            # 不能叠在旧帧像素上。只有渲染类型或连接状态变化时才重建。
+            if snap.connection_state == "Stopped":
+                render_type = RENDER_STOPPED
+                text = "已停止"
+            elif snap.connection_state == "Reconnecting":
+                render_type = RENDER_RECONNECTING
+                text = "视频流已中断，正在重连..."
             else:
-                text = f"等待画面... 状态: {snap.connection_state}"
+                render_type = RENDER_CONNECTING
+                text = f"正在连接... 状态: {snap.connection_state}"
+            if render_type == self._render_type and snap.connection_state == self._placeholder_state:
+                return
+            self._render_type = render_type
+            self._placeholder_state = snap.connection_state
+            placeholder = np.zeros((360, 640, 3), dtype=np.uint8)
             cv2.putText(placeholder, text, (30, 180),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
             self._show_frame(placeholder)
@@ -415,8 +441,9 @@ class MainWindow(QMainWindow):
         st["dropped"] = snap.estimated_dropped_frames
         st["avg_jpeg_mb"] = snap.average_jpeg_bytes / (1024 * 1024)
         st["throughput_mbps"] = snap.bandwidth_mbps
-        if snap.last_error:
-            st["error"] = snap.last_error
+        # 双向同步错误：有错误显示真实错误；无错误（连接恢复后模型已清空）
+        # 立即清空本地残留，标题栏恢复正常，不留旧 HTTP 错误。
+        st["error"] = snap.last_error or ""
 
     def _show_frame(self, frame_bgr):
         """把 BGR 帧转 QPixmap 显示到画面区（等比例缩放）。"""
@@ -463,7 +490,9 @@ class MainWindow(QMainWindow):
         self.metrics["invalid"].setText(str(st["invalid"]))
         self.metrics["dropped"].setText(str(st["dropped"]))
 
-        # 错误信息显示在窗口标题栏提示（简单方式）
+        # 错误信息显示在窗口标题栏提示（简单方式）。
+        # st["error"] 已由 _update_frame() 与共享模型双向同步：有错误显示真实错误，
+        # 连接恢复后模型把 last_error 清为 None，这里也随之恢复正常标题，不留残留。
         if st["error"]:
             self.setWindowTitle(f"PhoneVision Lab — {st['error'][:30]}")
         else:

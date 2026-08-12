@@ -470,8 +470,9 @@ class PhoneVisionApp:
         st["received"] = snap.received_frames
         st["invalid"] = snap.invalid_frames
         st["dropped"] = snap.estimated_dropped_frames
-        if snap.last_error:
-            st["error"] = snap.last_error
+        # 双向同步错误：有错误显示真实错误；无错误（连接恢复后模型已清空）
+        # 立即清空本地残留，标题栏恢复正常，不留旧 HTTP 错误（与 PySide6 对齐）。
+        st["error"] = snap.last_error or ""
         if not self._chips:
             return
         self._chips["phone_fps"].set(f"{st['phone_fps']:.1f}")

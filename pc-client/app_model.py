@@ -44,6 +44,13 @@ STATE_ERROR = "Error"
 PING_OK_INTERVAL = 1.0
 PING_FAIL_INTERVAL = 5.0
 
+# 视频帧新鲜度阈值：超过该时长没有收到新帧，视为"陈旧"，显示占位画面。
+# 选取理由：
+#   - 明显小于验收要求的 10 秒断线识别窗口。
+#   - 对当前真实接收速率（约 3~8 FPS）不会误判（正常间隔 < 0.4s）。
+#   - 与 /ping 轮询间隔无关，避免 ping 成功掩盖视频断流。
+FRAME_STALE_TIMEOUT_SECONDS = 3.0
+
 
 @dataclass(frozen=True)
 class AppSnapshot:
@@ -62,6 +69,8 @@ class AppSnapshot:
     estimated_dropped_frames: int
     last_error: str | None
     last_ping_time: float | None
+    frame_stale: bool           # 当前缓存帧是否已陈旧（超过阈值无新帧）
+    frame_age_seconds: float    # 自最近一次新帧以来的秒数
 
 
 class AppModel:
@@ -109,6 +118,11 @@ class AppModel:
 
         # ---- reconnect worker 状态 ----
         self._reconnect_thread: threading.Thread | None = None
+
+        # ---- 帧新鲜度状态 ----
+        self._last_new_frame_time: float | None = None  # 最近一次真正收到新帧的 monotonic 时间
+        self._last_new_frame_recv_total = 0            # 最近一次新帧时 reader 的 received 计数
+        self._frame_stale = True                        # 尚未收到首帧视为 stale
 
     # =====================================================================
     # 生命周期
@@ -244,6 +258,41 @@ class AppModel:
             self._invalid_frames = s["invalid"]
             if s["last_error"]:
                 self._last_error = s["last_error"]
+            else:
+                # 连接恢复后错误已清空：同步清空模型层错误，避免残留
+                self._last_error = None
+
+        # 帧新鲜度检测：基于 reader 实际 received 计数变化，不依赖 refresh 频率
+        self._update_frame_freshness(s["received"], now)
+
+    def _update_frame_freshness(self, received: int, now: float) -> None:
+        """根据 reader 收到的帧计数判断是否有新帧，维护帧新鲜度。
+
+        - 只有 reader 的 received 计数确实增加才算"新帧"，避免 refresh 高频调用
+          反复刷新新鲜度时间戳。
+        - reader 被替换（reconnect 后新 reader 计数从 0 或 1 重新开始，计数下降）
+          时重置观察基线；新 reader 首帧到达后重新开始计时。
+        - 无新帧超过 FRAME_STALE_TIMEOUT_SECONDS 即标记 stale。
+        - stale 后再次收到新帧立即恢复。
+        """
+        with self._lock:
+            delta = received - self._last_new_frame_recv_total
+            if delta > 0:
+                # 收到新帧
+                self._last_new_frame_time = now
+                self._last_new_frame_recv_total = received
+                self._frame_stale = False
+            elif delta < 0:
+                # reader 被替换、计数归零：重置观察基线，等待新 reader 首帧
+                self._last_new_frame_recv_total = received
+                self._last_new_frame_time = None
+                self._frame_stale = True
+            else:
+                # 无新帧：若超过阈值则标记陈旧
+                if self._last_new_frame_time is not None:
+                    age = now - self._last_new_frame_time
+                    if age > FRAME_STALE_TIMEOUT_SECONDS:
+                        self._frame_stale = True
 
     def _update_receive_fps(self, received: int, now: float) -> None:
         """基于 reader 新增接收帧数计算接收 FPS。
@@ -317,15 +366,27 @@ class AppModel:
     # =====================================================================
 
     def get_latest_frame(self):
-        """返回 (BGR 帧 或 None, 帧序号 或 None)。"""
+        """返回 (BGR 帧 或 None, 帧序号 或 None)。
+
+        当缓存帧已陈旧（超过 FRAME_STALE_TIMEOUT_SECONDS 无新帧）或尚未收到首帧时，
+        返回 (None, None)，让 GUI 进入占位画面分支。stale 判断在共享模型层，
+        两套 GUI 复用同一语义。
+        """
         reader = self._reader
         if reader is None:
             return None, None
+        with self._lock:
+            if self._frame_stale:
+                return None, None
         return reader.get_latest_frame()
 
     def snapshot(self) -> AppSnapshot:
         """线程安全地取不可变快照。"""
         with self._lock:
+            now = time.monotonic()
+            frame_age = 0.0
+            if self._last_new_frame_time is not None:
+                frame_age = now - self._last_new_frame_time
             return AppSnapshot(
                 connection_state=self._state,
                 device_name=self._device_name,
@@ -341,6 +402,8 @@ class AppModel:
                 estimated_dropped_frames=self._estimated_dropped,
                 last_error=self._last_error,
                 last_ping_time=self._last_ping_time,
+                frame_stale=self._frame_stale,
+                frame_age_seconds=frame_age,
             )
 
     def is_running(self) -> bool:
