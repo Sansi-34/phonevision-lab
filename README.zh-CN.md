@@ -33,6 +33,29 @@ python legacy_main.py --host 192.168.x.x
 参数按当前视觉模式显示；诊断区默认收起；快捷键：S 保存、R 重连、1-5 切模式、
 Ctrl+Q 退出。语言选择保存在本机；项目无遥测。
 
+## Windows 便携包（无需安装 Python）
+
+发布时提供 `PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip`（PyInstaller onedir）。
+**尚未正式发布**，仅作为本地构建产物。
+
+1. 解压 ZIP，双击 `PhoneVisionLab.exe`。
+2. 首次启动输入手机 App 界面显示的 IP（不是示例 IP），端口默认 8080。
+3. 手机必须先点击"开始推流"。
+4. 最近成功地址只保存在本机（QSettings），可随时编辑。
+5. 日志位置：`%LOCALAPPDATA%\PhoneVisionLab\logs\phonevision.log`（本机轮转，
+   不记录图像内容，无遥测）。
+6. 顶栏可切换简体中文 / English，选择保存在本机。
+7. 未签名：Windows SmartScreen 可能提示"未知发布者"，属正常；选择"仍要运行"即可。
+
+校验 ZIP 完整性（`certutil` 或 `sha256sum`）：
+
+```powershell
+certutil -hashfile PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip SHA256
+```
+
+源码运行仍是官方方式（见上方"快速开始"）；Legacy Tkinter 入口 `legacy_main.py`
+保留但非默认。完全本地、无遥测。
+
 ## 正在建设、尚未完成
 
 - USB 正式连接体验（adb forward 只是可复用的技术方案）

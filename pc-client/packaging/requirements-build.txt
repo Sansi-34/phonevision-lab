@@ -1,0 +1,12 @@
+# PhoneVision Lab — Windows 便携打包构建依赖（构建环境，非运行时）。
+#
+# 用途：build_windows.ps1 在干净的 .venv-build 虚拟环境里安装这些依赖，
+# 用于运行 PyInstaller 打包。运行时依赖（PySide6/opencv/numpy/requests/
+# pillow 等）见 requirements-windows.lock（由构建环境 `pip freeze` 固化）。
+#
+# 版本：从干净构建环境实际解析后锁定（PyInstaller 6.22.0 /
+# hooks-contrib 2026.6），保证可复现。
+PyInstaller==6.22.0
+
+# PyInstaller 的官方 hook 仓库（自动收集 PySide6 等第三方库的依赖）。
+pyinstaller-hooks-contrib==2026.6

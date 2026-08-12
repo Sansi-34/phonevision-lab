@@ -26,6 +26,7 @@ Thumbs.db
 *.py[cod]
 *.pyo
 .venv/
+.venv-build/
 venv/
 env/
 .pytest_cache/
@@ -37,6 +38,9 @@ htmlcov/
 **/captures/
 *.log
 *logcat*.txt
+artifacts/
+**/dist/
+**/build/
 
 # ---------- Large validation artifacts ----------
 *.mjpeg

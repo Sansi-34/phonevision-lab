@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- PhoneVision Lab app icon: dark rounded square + indigo abstract phone + lens.
+       Brand color #5B7CFA only; no text; no third-party assets. -->
+  <defs>
+    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7B95FF"/>
+      <stop offset="1" stop-color="#5B7CFA"/>
+    </linearGradient>
+  </defs>
+  <!-- background rounded square -->
+  <rect x="8" y="8" width="1008" height="1008" rx="220" fill="#0E1116" stroke="#333C50" stroke-width="6"/>
+  <!-- inner panel -->
+  <rect x="102" y="102" width="820" height="820" rx="150" fill="#161B26"/>
+  <!-- phone body -->
+  <rect x="358" y="195" width="308" height="634" rx="92" fill="#5B7CFA"/>
+  <!-- camera lens barrel -->
+  <circle cx="512" cy="502" r="123" fill="#0E1116" stroke="#232A39" stroke-width="10"/>
+  <!-- lens -->
+  <circle cx="512" cy="502" r="61" fill="url(#lens)"/>
+  <circle cx="492" cy="482" r="18" fill="#E6EAF2"/>
+  <!-- viewfinder frame on front -->
+  <rect x="427" y="641" width="170" height="130" rx="26" fill="none" stroke="#0E1116" stroke-width="12"/>
+</svg>

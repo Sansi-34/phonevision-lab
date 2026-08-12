@@ -35,6 +35,31 @@ phone first. Parameters are shown per active vision mode; the diagnostics panel
 is collapsed by default; shortcuts: S save, R reconnect, 1-5 switch mode,
 Ctrl+Q quit. Language choice is saved locally; the project has no telemetry.
 
+## Windows portable package (no Python required)
+
+A `PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip` (PyInstaller onedir) is produced
+at build time. **Not an official release yet** — local build artifact only.
+
+1. Unzip and double-click `PhoneVisionLab.exe`.
+2. On first launch enter the IP shown in the phone app (not the example IP),
+   port 8080 by default.
+3. The phone must be streaming first.
+4. The last successful address is saved locally only (QSettings) and is editable.
+5. Logs: `%LOCALAPPDATA%\PhoneVisionLab\logs\phonevision.log` (local rotation,
+   no image content, no telemetry).
+6. Switch Simplified Chinese / English in the top bar; the choice is saved locally.
+7. Unsigned: Windows SmartScreen may warn "unknown publisher" — click "Run anyway".
+
+Verify the ZIP checksum:
+
+```powershell
+certutil -hashfile PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip SHA256
+```
+
+Running from source is still the official path (see Getting started above); the
+Legacy Tkinter entry `legacy_main.py` remains but is not the default. Fully local,
+no telemetry.
+
 ## What is in progress, not yet complete
 
 - USB as a formal product feature (adb forward is a reusable technique only)

@@ -1,0 +1,11 @@
+{
+  "applicationVersion": "0.1.0-alpha.1",
+  "gitCommit": "GENERATED_AT_BUILD",
+  "buildTimeUtc": "GENERATED_AT_BUILD",
+  "pythonVersion": "3.12.10",
+  "architecture": "x64",
+  "pyinstaller": "6.22.0",
+  "PySide6": "6.11.1",
+  "opencv": "5.0.0.93",
+  "numpy": "2.5.2"
+}
