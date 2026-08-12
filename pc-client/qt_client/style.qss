@@ -1,10 +1,26 @@
 /* ============================================================
    PhoneVision Lab — 深色产品级主题 (PySide6 QSS)
    加载：app.setStyleSheet(Path("style.qss").read_text(encoding="utf-8"))
+
+   设计 Token（全文件统一，不重复硬编码）：
+     - bg      #0E1116  窗口底
+     - panel   #161B26  面板/卡片底
+     - topbar  #10141D  顶栏/侧栏底
+     - video   #000000  画面区
+     - line    #232A39  分隔/描边
+     - brand   #5B7CFA  品牌强调色（唯一强调，仅选中/主按钮/已滑轨道）
+     - text    #E6EAF2  主文本
+     - muted   #8A93A6  次文本
+     - success #3DD68C  状态绿
+     - warning #F5A524  状态琥珀
+     - error   #F2645F  状态红
+
    设计要点：
      - 层级靠"亮度 + 留白"，不用重边框
-     - 品牌色(靛蓝 #5B7CFA)只出现在：选中模式按钮 / 主按钮 / 已滑过轨道
-     - 功能色(绿/琥珀/红)只表达状态
+     - 状态色只表状态，不混入品牌强调
+     - 无渐变、无霓虹、无无意义阴影
+     - 数据数字等宽（Consolas）
+     - 圆角有层级：顶栏(6) < 面板/按钮(8) < 卡片(10-12)
    ============================================================ */
 
 /* ---------- 基础 ---------- */
@@ -19,32 +35,38 @@ QWidget {
     /* 注意：不写 background，QLabel 等默认透明，透出父级背景 */
 }
 
-/* ---------- 容器面板 ---------- */
-QFrame#sidebar {
+/* ---------- 顶栏 ---------- */
+QFrame#topbar {
     background-color: #10141D;
     border: 1px solid #232A39;
-    border-radius: 14px;
+    border-radius: 6px;
 }
-QFrame#metricsBar {
+QLabel#brandLabel {
+    color: #E6EAF2;
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+QLabel#deviceLabel {
+    color: #8A93A6;
+    font-size: 9pt;
+}
+QLabel[textRole="muted"] { color: #4A5260; }
+
+/* ---------- 右侧检查器 ---------- */
+QFrame#inspector {
     background-color: #10141D;
     border: 1px solid #232A39;
-    border-radius: 14px;
+    border-radius: 10px;
 }
 
 /* ---------- 卡片 ---------- */
 QFrame[cardRole="card"] {
     background-color: #161B26;
     border: 1px solid #232A39;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 QFrame[cardRole="card"]:hover { border-color: #2A3140; }
-
-/* 视频画面区 */
-QLabel#videoView {
-    background-color: #000000;
-    border: 1px solid #232A39;
-    border-radius: 12px;
-}
 
 /* ---------- 文本 ---------- */
 QLabel[textRole="groupTitle"] {
@@ -53,12 +75,19 @@ QLabel[textRole="groupTitle"] {
     font-weight: 600;
 }
 QLabel[textRole="caption"] {
-    color: #5C6470;
+    color: #8A93A6;
     font-size: 8pt;
 }
 QLabel[textRole="hint"] {
     color: #4A5260;
     font-size: 8pt;
+}
+QLabel[textRole="hint"][hintRole="active"] {
+    color: #8A93A6;
+}
+QLabel[textRole="hint"][hintRole="empty"] {
+    color: #4A5260;
+    font-style: italic;
 }
 
 /* ---------- 通用按钮（四态齐全） ---------- */
@@ -67,14 +96,19 @@ QPushButton {
     color: #D7DDEA;
     border: 1px solid transparent;
     border-radius: 8px;
-    padding: 7px 14px;
+    padding: 5px 14px;
     font-weight: 500;
+    min-height: 32px;
 }
 QPushButton:hover  { background-color: #232B3A; }
 QPushButton:pressed { background-color: #2A3140; }
 QPushButton:disabled {
     color: #5C6470;
     background-color: #141924;
+}
+QPushButton:focus {
+    border: 1px solid #5B7CFA;
+    outline: none;
 }
 
 /* 品牌主按钮 */
@@ -109,41 +143,32 @@ QPushButton[buttonRole="ghost"]:disabled {
     background-color: transparent;
 }
 
-/* 危险按钮（退出：淡红底 + 红字，克制不刺眼） */
-QPushButton[buttonRole="danger"] {
-    background-color: rgba(242, 100, 95, 0.12);
-    color: #F27E78;
-    border: 1px solid rgba(242, 100, 95, 0.35);
-}
-QPushButton[buttonRole="danger"]:hover {
-    background-color: rgba(242, 100, 95, 0.22);
-    color: #FF9A94;
-    border-color: rgba(242, 100, 95, 0.50);
-}
-QPushButton[buttonRole="danger"]:pressed {
-    background-color: rgba(242, 100, 95, 0.30);
-}
-
-/* ---------- 模式按钮（checkable，:checked 变主色） ---------- */
-QPushButton[buttonRole="mode"] {
+/* ---------- 模式按钮（纵向紧凑，checkable，:checked 变主色） ---------- */
+QPushButton#modeButton {
     background-color: #1A2029;
     color: #9AA3B2;
-    border: none;
+    border: 1px solid transparent;
     border-radius: 8px;
-    padding: 7px 0;
+    padding: 5px 0;
     font-weight: 500;
+    text-align: left;
+    padding-left: 12px;
 }
-QPushButton[buttonRole="mode"]:hover {
+QPushButton#modeButton:hover {
     background-color: #232B3A;
     color: #E6EAF2;
 }
-QPushButton[buttonRole="mode"]:checked {
-    background-color: #5B7CFA;
-    color: #FFFFFF;
+QPushButton#modeButton:checked {
+    background-color: rgba(91, 124, 250, 0.18);
+    color: #5B7CFA;
+    border: 1px solid rgba(91, 124, 250, 0.45);
     font-weight: 600;
 }
-QPushButton[buttonRole="mode"]:checked:hover { background-color: #7B95FF; }
-QPushButton[buttonRole="mode"]:pressed { background-color: #4657D6; }
+QPushButton#modeButton:checked:hover {
+    background-color: rgba(91, 124, 250, 0.26);
+    color: #7B95FF;
+}
+QPushButton#modeButton:pressed { background-color: #2A3140; }
 
 /* ---------- 滑块 QSlider（Windows 完整可用写法） ---------- */
 QSlider { min-height: 24px; }
@@ -163,50 +188,35 @@ QSlider::add-page:horizontal {
     border-radius: 2px;
 }
 QSlider::handle:horizontal {
-    width: 14px;
-    height: 14px;
-    margin: -5px 0;
+    width: 16px;
+    height: 16px;
+    margin: -6px 0;
     background: #E6EAF2;
-    border-radius: 7px;
+    border-radius: 8px;
 }
 QSlider::handle:horizontal:hover   { background: #FFFFFF; }
 QSlider::handle:horizontal:pressed { background: #5B7CFA; }
+QSlider::handle:horizontal:focus { border: 2px solid #5B7CFA; }
 
-/* ---------- 指标块（小标签 + 大等宽数值） ---------- */
-QFrame[cardRole="chip"] {
-    background-color: #1B2131;
-    border: 1px solid #232A39;
-    border-radius: 10px;
-}
-QLabel[textRole="chipLabel"] {
-    color: #5C6470;
-    font-size: 8pt;
-}
-QLabel[textRole="chipValue"] {
+QLabel#sliderValue {
     color: #E6EAF2;
     font-family: "Consolas";
-    font-size: 11pt;
+    font-size: 9pt;
     font-weight: 600;
 }
 
-/* ---------- 状态指示（动态 property 切换） ---------- */
-QLabel[textRole="chipValue"][chipState="success"]  { color: #3DD68C; }
-QLabel[textRole="chipValue"][chipState="warning"]  { color: #F5A524; }
-QLabel[textRole="chipValue"][chipState="error"]    { color: #F2645F; }
-QLabel[textRole="chipValue"][chipState="idle"]     { color: #5C6470; }
-
-/* 状态圆点 */
-QLabel[statusRole="dot"] {
-    min-width: 8px;
-    max-width: 8px;
-    min-height: 8px;
-    max-height: 8px;
-    border-radius: 4px;
-    background-color: #5C6470;
+/* ---------- 滚动区 ---------- */
+QScrollArea {
+    border: none;
+    background: transparent;
 }
-QLabel[statusRole="dot"][chipState="success"] { background-color: #3DD68C; }
-QLabel[statusRole="dot"][chipState="warning"] { background-color: #F5A524; }
-QLabel[statusRole="dot"][chipState="error"]   { background-color: #F2645F; }
+/* viewport 必须吃深色主题，否则参数卡渲染成白底 */
+QScrollArea > QWidget > QWidget {
+    background: #161B26;
+}
+QScrollArea QWidget#qt_scrollarea_viewport {
+    background: #161B26;
+}
 
 /* ---------- 滚动条 ---------- */
 QScrollBar:vertical {
@@ -245,3 +255,100 @@ QToolTip {
     padding: 4px 8px;
     border-radius: 6px;
 }
+
+/* ============================================================
+   ui_components（StatusPill / ToastBanner / VideoView / DiagnosticsPanel）
+   这些组件由 ui_components.py 创建，这里只负责外观。
+   ============================================================ */
+
+/* ---------- StatusPill（状态灯：圆点 + 状态文本） ---------- */
+QFrame#statusPill {
+    background-color: #1A2029;
+    border: 1px solid #232A39;
+    border-radius: 10px;
+    padding: 2px 8px;
+}
+/* 圆点：组件用 statusRole="dot" + chipState 上色 */
+QLabel[statusRole="dot"] {
+    min-width: 8px;
+    max-width: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    border-radius: 4px;
+    background-color: #5C6470;
+}
+QLabel[statusRole="dot"][chipState="success"] { background-color: #3DD68C; }
+QLabel[statusRole="dot"][chipState="warning"] { background-color: #F5A524; }
+QLabel[statusRole="dot"][chipState="error"]   { background-color: #F2645F; }
+QLabel[statusRole="dot"][chipState="idle"]    { background-color: #5C6470; }
+/* 状态文本：组件用 textRole="chipValue" + chipState 上色 */
+QLabel[textRole="chipValue"][chipState="success"] { color: #3DD68C; }
+QLabel[textRole="chipValue"][chipState="warning"] { color: #F5A524; }
+QLabel[textRole="chipValue"][chipState="error"]   { color: #F2645F; }
+QLabel[textRole="chipValue"][chipState="idle"]    { color: #8A93A6; }
+
+/* ---------- ToastBanner（toastRole 分色底） ---------- */
+QFrame#toast {
+    background-color: #1B2131;
+    border: 1px solid #2A3140;
+    border-radius: 8px;
+    padding: 2px;
+}
+QFrame#toast[toastRole="success"] { background-color: rgba(61, 214, 140, 0.12); border-color: rgba(61, 214, 140, 0.45); }
+QFrame#toast[toastRole="info"]    { background-color: rgba(91, 124, 250, 0.12); border-color: rgba(91, 124, 250, 0.45); }
+QFrame#toast[toastRole="warning"] { background-color: rgba(245, 165, 36, 0.12); border-color: rgba(245, 165, 36, 0.45); }
+QFrame#toast[toastRole="error"]   { background-color: rgba(242, 100, 95, 0.12); border-color: rgba(242, 100, 95, 0.45); }
+QLabel#toastText {
+    color: #E6EAF2;
+    font-size: 9pt;
+    padding: 2px 8px;
+}
+
+/* ---------- VideoView（画面区：纯黑底 + 居中信息） ---------- */
+QFrame#videoView {
+    background-color: #000000;
+    border: 1px solid #232A39;
+    border-radius: 10px;
+}
+QLabel#videoInfo {
+    color: #8A93A6;
+    font-size: 8pt;
+    font-family: "Consolas";
+    background-color: rgba(0, 0, 0, 0.55);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+/* ---------- DiagnosticsPanel（底部诊断区） ---------- */
+QFrame#diagnosticsPanel {
+    background-color: #10141D;
+    border: 1px solid #232A39;
+    border-radius: 10px;
+}
+QPushButton#diagnosticsToggle {
+    background-color: transparent;
+    border: none;
+    color: #8A93A6;
+    font-weight: 600;
+    text-align: left;
+    padding: 2px 4px;
+}
+QPushButton#diagnosticsToggle:hover { color: #E6EAF2; }
+QFrame#diagnosticsGrid {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+}
+QLabel[textRole="diagLabel"] {
+    color: #5C6470;
+    font-size: 8pt;
+}
+QLabel[textRole="diagValue"] {
+    color: #E6EAF2;
+    font-family: "Consolas";
+    font-size: 10pt;
+    font-weight: 600;
+}
+QLabel[textRole="diagValue"][diagState="success"] { color: #3DD68C; }
+QLabel[textRole="diagValue"][diagState="warning"] { color: #F5A524; }
+QLabel[textRole="diagValue"][diagState="error"]   { color: #F2645F; }
