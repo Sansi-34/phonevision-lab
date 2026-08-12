@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 import requests
 
+import app_model
 import mjpeg_reader
 import vision_modes
 
@@ -70,22 +71,21 @@ class MainWindow(QMainWindow):
             "dropped": 0,
             "error": "",
         }
-        self._last_bytes = 0
-        self._last_time = time.monotonic()
-        self._recv_count = 0
-        self._recv_t0 = time.monotonic()
-        self._disp_count = 0
-        self._disp_t0 = time.monotonic()
-        self._last_ping = 0.0
-        self._ping_interval = 1.0
-        self._last_server_fc = None
-        self._last_recv_total = 0
         self._last_frame_num = None
         self._qimg = None  # 保引用，防止 QImage 底层数据被回收
 
-        # ---- 读取线程 ----
-        self.reader = mjpeg_reader.MjpegReader(stream_url)
-        self.reader.start()
+        # ---- 共享客户端状态模型（网络 / 统计 / 生命周期唯一来源）----
+        self.model = app_model.AppModel(
+            stream_url=stream_url,
+            ping_url=ping_url,
+            device_name=str(ping_info.get("device", "")),
+            width=int(ping_info.get("width") or 0),
+            height=int(ping_info.get("height") or 0),
+            phone_fps=float(ping_info.get("actualFps", 0) or 0),
+        )
+        self.model.start()
+        # 兼容旧引用（部分方法仍用 self.reader）
+        self.reader = self.model
 
         # ---- 构建界面 ----
         self._build_ui()
@@ -306,7 +306,7 @@ class MainWindow(QMainWindow):
         metric_defs = [
             ("采集FPS", "phone"), ("接收FPS", "recv"), ("显示FPS", "disp"),
             ("分辨率", "res"), ("平均JPEG", "jpeg"), ("带宽Mbps", "mbps"),
-            ("接收帧", "received"), ("丢帧", "dropped"),
+            ("接收帧", "received"), ("无效帧", "invalid"), ("丢帧", "dropped"),
         ]
         for label, key in metric_defs:
             chip = QFrame()
@@ -357,17 +357,13 @@ class MainWindow(QMainWindow):
         self.stats["error"] = f"已保存: {tag}"
 
     def reconnect(self):
-        self.stats["error"] = "已请求重连..."
-        threading.Thread(target=self._reconnect_worker, daemon=True).start()
-
-    def _reconnect_worker(self):
-        self.reader.stop()
-        self.reader = mjpeg_reader.MjpegReader(self.stream_url)
-        self.reader.start()
+        # 手动重连：AppModel 内部在后台线程执行 stop+start，不阻塞 GUI
+        self.model.set_last_error("已请求重连...")
+        self.model.reconnect()
 
     def closeEvent(self, event):
         """窗口关闭：确保后台读取线程被 stop。"""
-        self.reader.stop()
+        self.model.stop()
         super().closeEvent(event)
 
     # =====================================================================
@@ -376,8 +372,8 @@ class MainWindow(QMainWindow):
 
     def _refresh(self):
         try:
+            self.model.refresh()  # 汇总统计 + /ping 轮询 + 丢帧估算
             self._update_frame()
-            self._update_ping()
             self._update_metrics()
         except Exception as e:  # noqa: BLE001 - UI 刷新不能崩
             self.stats["error"] = str(e)
@@ -388,40 +384,35 @@ class MainWindow(QMainWindow):
             return
         self._last_frame_num = num
 
+        snap = self.model.snapshot()
         if frame is not None:
             disp = vision_modes.apply_mode(self.mode, frame, self.params)
-            self._disp_count += 1
+            self.model.mark_frame_displayed()  # 通知共享模型：本帧已显示
             self._show_frame(disp)
+        else:
+            # 断流/重连占位画面（与 Tkinter 版对齐）
+            placeholder = np.zeros((360, 640, 3), dtype=np.uint8)
+            if snap.connection_state == "Reconnecting":
+                text = "连接断开，正在重连..."
+            else:
+                text = f"等待画面... 状态: {snap.connection_state}"
+            cv2.putText(placeholder, text, (30, 180),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+            self._show_frame(placeholder)
 
-        now = time.monotonic()
-        dt = now - self._disp_t0
-        if dt >= 1.0:
-            self.stats["disp_fps"] = self._disp_count / dt
-            self._disp_count = 0
-            self._disp_t0 = now
-
-        s = self.reader.get_stats()
-        self.stats["received"] = s["received"]
-        self.stats["invalid"] = s["invalid"]
-        self.stats["state"] = s["state"]
-        if s["last_error"]:
-            self.stats["error"] = s["last_error"]
-
-        self._recv_count += 1
-        dt2 = now - self._recv_t0
-        if dt2 >= 1.0:
-            self.stats["recv_fps"] = self._recv_count / dt2
-            self._recv_count = 0
-            self._recv_t0 = now
-
-        byte_delta = s["bytes"] - self._last_bytes
-        dt3 = now - self._last_time
-        if dt3 > 0:
-            self.stats["throughput_mbps"] = (byte_delta * 8 / 1e6) / dt3
-        self._last_bytes = s["bytes"]
-        self._last_time = now
-        if s["received"] > 0:
-            self.stats["avg_jpeg_mb"] = (s["bytes"] / s["received"]) / (1024 * 1024)
+        # 从共享快照同步统计（不再在本窗口自算 FPS/吞吐/丢帧）
+        st = self.stats
+        st["state"] = snap.connection_state
+        st["phone_fps"] = snap.phone_fps
+        st["recv_fps"] = snap.receive_fps
+        st["disp_fps"] = snap.display_fps
+        st["received"] = snap.received_frames
+        st["invalid"] = snap.invalid_frames
+        st["dropped"] = snap.estimated_dropped_frames
+        st["avg_jpeg_mb"] = snap.average_jpeg_bytes / (1024 * 1024)
+        st["throughput_mbps"] = snap.bandwidth_mbps
+        if snap.last_error:
+            st["error"] = snap.last_error
 
     def _show_frame(self, frame_bgr):
         """把 BGR 帧转 QPixmap 显示到画面区（等比例缩放）。"""
@@ -436,26 +427,7 @@ class MainWindow(QMainWindow):
             self.video_view.setPixmap(pixmap)
 
     def _update_ping(self):
-        now = time.monotonic()
-        if now - self._last_ping < self._ping_interval:
-            return
-        self._last_ping = now
-        try:
-            info = requests.get(self.ping_url, timeout=1.0).json()
-            self.stats["phone_fps"] = float(info.get("actualFps", 0) or 0)
-            self._ping_interval = 1.0
-            fc = info.get("frameCount")
-            s = self.reader.get_stats()
-            if self._last_server_fc is not None and fc is not None:
-                server_delta = fc - self._last_server_fc
-                local_delta = s["received"] - self._last_recv_total
-                if server_delta > 0 and local_delta < server_delta:
-                    self.stats["dropped"] += (server_delta - local_delta)
-            if fc is not None:
-                self._last_server_fc = fc
-            self._last_recv_total = s["received"]
-        except Exception:
-            self._ping_interval = 5.0
+        """已废弃：/ping 轮询与丢帧估算由 AppModel.refresh() 统一处理。"""
 
     def _update_metrics(self):
         st = self.stats
@@ -484,6 +456,7 @@ class MainWindow(QMainWindow):
         self.metrics["jpeg"].setText(f"{st['avg_jpeg_mb']:.2f}MB")
         self.metrics["mbps"].setText(f"{st['throughput_mbps']:.1f}")
         self.metrics["received"].setText(str(st["received"]))
+        self.metrics["invalid"].setText(str(st["invalid"]))
         self.metrics["dropped"].setText(str(st["dropped"]))
 
         # 错误信息显示在窗口标题栏提示（简单方式）

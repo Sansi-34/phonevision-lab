@@ -27,6 +27,7 @@ from tkinter import ttk
 import cv2
 import numpy as np
 
+import app_model
 import mjpeg_reader
 import theme
 import vision_modes
@@ -65,20 +66,19 @@ class PhoneVisionApp:
             "dropped": 0,
             "error": "",
         }
-        self._last_bytes = 0
-        self._last_time = time.monotonic()
-        self._recv_count = 0
-        self._recv_t0 = time.monotonic()
-        self._disp_count = 0
-        self._disp_t0 = time.monotonic()
-        self._last_ping = 0.0
-        self._ping_interval = 1.0
-        self._last_server_fc = None
-        self._last_recv_total = 0
 
-        # ---- 后台读取线程 ----
-        self.reader = mjpeg_reader.MjpegReader(stream_url)
-        self.reader.start()
+        # ---- 共享客户端状态模型（网络 / 统计 / 生命周期唯一来源）----
+        self.model = app_model.AppModel(
+            stream_url=stream_url,
+            ping_url=ping_url,
+            device_name=str(ping_info.get("device", "")),
+            width=int(ping_info.get("width") or 0),
+            height=int(ping_info.get("height") or 0),
+            phone_fps=float(ping_info.get("actualFps", 0) or 0),
+        )
+        self.model.start()
+        # 兼容旧引用（部分方法仍用 self.reader）
+        self.reader = self.model
 
         # ---- 构建界面 ----
         self._build_ui()
@@ -397,17 +397,12 @@ class PhoneVisionApp:
         self.stats["error"] = f"已保存: {tag}"
 
     def reconnect(self):
-        # reader.stop() 内部 join(3s) 会阻塞 GUI，放到后台线程执行
-        self.stats["error"] = "已请求重连..."
-        threading.Thread(target=self._reconnect_worker, daemon=True).start()
-
-    def _reconnect_worker(self):
-        self.reader.stop()
-        self.reader = mjpeg_reader.MjpegReader(self.stream_url)
-        self.reader.start()
+        # 手动重连：AppModel 内部在后台线程执行 stop+start，不阻塞 GUI
+        self.model.set_last_error("已请求重连...")
+        self.model.reconnect()
 
     def quit(self):
-        self.reader.stop()
+        self.model.stop()
         self.root.destroy()
 
     # =====================================================================
@@ -417,8 +412,8 @@ class PhoneVisionApp:
     def _refresh_loop(self):
         """定时刷新：取帧、处理、显示、更新状态栏、/ping。"""
         try:
+            self.model.refresh()  # 汇总统计 + /ping 轮询 + 丢帧估算
             self._update_frame()
-            self._update_ping()
             self._update_status()
         except Exception as e:  # noqa: BLE001 - GUI 循环不能崩
             self.stats["error"] = str(e)
@@ -443,15 +438,8 @@ class PhoneVisionApp:
             disp = placeholder
         else:
             disp = vision_modes.apply_mode(self.mode, frame, self.params)
-            self._disp_count += 1
-
-        # 更新显示 FPS
-        now = time.monotonic()
-        dt = now - self._disp_t0
-        if dt >= 1.0:
-            self.stats["disp_fps"] = self._disp_count / dt
-            self._disp_count = 0
-            self._disp_t0 = now
+            # 通知共享模型：本帧已显示，用于显示 FPS 统计
+            self.model.mark_frame_displayed()
 
         # 显示到 Tkinter
         img = cv2.cvtColor(disp, cv2.COLOR_BGR2RGB)
@@ -466,56 +454,24 @@ class PhoneVisionApp:
         self._tk_img = ImageTk.PhotoImage(Image.fromarray(img))
         self.canvas.config(image=self._tk_img)
 
-        # 更新接收统计
-        s = self.reader.get_stats()
-        self.stats["received"] = s["received"]
-        self.stats["invalid"] = s["invalid"]
-        self.stats["state"] = s["state"]
-        # 只显示 reader 的实时错误；瞬时消息（已保存/已重连）用独立字段，避免滞留
-        if s["last_error"]:
-            self.stats["error"] = s["last_error"]
-        self._recv_count += 1
-        dt2 = now - self._recv_t0
-        if dt2 >= 1.0:
-            self.stats["recv_fps"] = self._recv_count / dt2
-            self._recv_count = 0
-            self._recv_t0 = now
-        # 吞吐
-        byte_delta = s["bytes"] - self._last_bytes
-        dt3 = now - self._last_time
-        if dt3 > 0:
-            self.stats["throughput_mbps"] = (byte_delta * 8 / 1e6) / dt3
-        self._last_bytes = s["bytes"]
-        self._last_time = now
-        if s["received"] > 0:
-            self.stats["avg_jpeg_mb"] = (s["bytes"] / s["received"]) / (1024 * 1024)
-
-    def _update_ping(self):
-        import requests
-        now = time.monotonic()
-        if now - self._last_ping < self._ping_interval:
-            return
-        self._last_ping = now
-        try:
-            info = requests.get(self.ping_url, timeout=1.0).json()
-            self.stats["phone_fps"] = float(info.get("actualFps", 0) or 0)
-            self._ping_interval = 1.0
-            fc = info.get("frameCount")
-            s = self.reader.get_stats()
-            if self._last_server_fc is not None and fc is not None:
-                server_delta = fc - self._last_server_fc
-                local_delta = s["received"] - self._last_recv_total
-                if server_delta > 0 and local_delta < server_delta:
-                    self.stats["dropped"] += (server_delta - local_delta)
-            if fc is not None:
-                self._last_server_fc = fc
-            self._last_recv_total = s["received"]
-        except Exception:
-            self._ping_interval = 5.0
-
     def _update_status(self):
         """把统计写进状态栏指标小方块；状态块颜色随状态变化。"""
+        # 从共享 AppModel 取不可变快照，同步到 self.stats（兼容旧渲染代码）
+        snap = self.model.snapshot()
         st = self.stats
+        st["state"] = snap.connection_state
+        st["phone_fps"] = snap.phone_fps
+        st["recv_fps"] = snap.receive_fps
+        st["disp_fps"] = snap.display_fps
+        st["width"] = snap.width
+        st["height"] = snap.height
+        st["avg_jpeg_mb"] = snap.average_jpeg_bytes / (1024 * 1024)
+        st["throughput_mbps"] = snap.bandwidth_mbps
+        st["received"] = snap.received_frames
+        st["invalid"] = snap.invalid_frames
+        st["dropped"] = snap.estimated_dropped_frames
+        if snap.last_error:
+            st["error"] = snap.last_error
         if not self._chips:
             return
         self._chips["phone_fps"].set(f"{st['phone_fps']:.1f}")
