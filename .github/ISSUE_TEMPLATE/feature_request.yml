@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a new feature for PhoneVision Lab
+title: "feature: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. This is a learning project — a clear **user problem**
+        and the **learning scenario** it serves help us prioritize.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What can't you do today? Describe the situation, not the solution.
+      placeholder: "e.g. I want to compare the raw frame and the Canny edges side by side while adjusting thresholds."
+    validations:
+      required: true
+  - type: textarea
+    id: learning
+    attributes:
+      label: Learning scenario
+      description: How does this help someone learn machine vision / image processing?
+      placeholder: "e.g. beginners can see in real time how the threshold changes the edges."
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested approach (optional)
+      description: Rough idea of how it could be built. Keep it high level.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
+      description: Anything you tried as a workaround?

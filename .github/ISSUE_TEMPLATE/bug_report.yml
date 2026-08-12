@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a problem with PhoneVision Lab
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill in only what's needed — and remember
+        **privacy**: don't include screenshots of private content, real IPs,
+        usernames, paths, serial numbers, or full logs.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Version and how you run it (e.g. "0.1.0-alpha.1, source `python main.py`" or "Windows portable package")
+      placeholder: "0.1.0-alpha.1, source / portable package"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Operating system (phone and PC)
+      placeholder: "Windows 11 + Android 12 phone"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start streaming on the phone
+        2. Run ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log summary (optional)
+      description: A short summary of relevant log lines — NOT the full log, and no sensitive data.
+      placeholder: "e.g. line 12: connection failed, HTTP 403 on /ping"
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have not included private information (real IPs, usernames, paths, serial numbers, screenshots of private content, or secrets)
+          required: true

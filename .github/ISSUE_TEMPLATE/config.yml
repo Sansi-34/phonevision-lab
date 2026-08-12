@@ -1,0 +1,15 @@
+# Blank issues
+
+Please choose a template — bug reports and feature requests are both supported.
+
+- **Bugs**: use the bug report template. Include version/platform/steps, and
+  keep it private (no screenshots of private content, real IPs, usernames, paths,
+  serial numbers, or full logs).
+- **Feature ideas**: use the feature request template and describe the user
+  problem and learning scenario.
+
+Questions about how to use the project: you can still open a regular issue;
+support guidance is in [SUPPORT.md](../../SUPPORT.md).
+
+For security issues, do **not** open a public issue — see
+[SECURITY.md](../../SECURITY.md) for the private reporting path.

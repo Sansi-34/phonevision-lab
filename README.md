@@ -3,21 +3,37 @@
 > [中文文档](README.zh-CN.md)
 
 Turn an old Android phone into a vision sensor for machine vision learning on
-Windows. Stream MJPEG over WiFi (and eventually USB), then learn image
-processing with OpenCV.
+Windows. Stream MJPEG over WiFi, then learn image processing with OpenCV — five
+vision modes, bilingual UI, fully local, no account, no telemetry.
 
 **Status: Pre-release / development snapshot. Not ready for v1.0.**
 
+## System overview
+
+```
+ ┌─────────────────────┐   MJPEG over HTTP (WiFi)   ┌──────────────────────────┐
+ │   Android phone     │  ───────────────────────►  │   Windows PC             │
+ │  (the sensor)       │   GET /stream              │  (the workbench)         │
+ │  Camera2 + JPEG     │   GET /ping  (JSON)        │  PySide6 UI + OpenCV     │
+ │  NanoHTTPD server   │                            │  original / gray / canny │
+ └─────────────────────┘                            │  hsv / contours          │
+                                                    └──────────────────────────┘
+```
+
+- **Phone = sensor**: captures frames, JPEG-encodes them, pushes an MJPEG stream.
+- **PC = brain**: parses the stream, applies the five vision modes, and shows the
+  result for learning.
+
 ## What is verified to work
 
-- Android Camera2 live preview
-- WiFi MJPEG streaming over HTTP
-- `GET /ping` and `GET /stream` endpoints
-- Windows PySide6 vision workbench (default client): top bar + live view + mode inspector + collapsible diagnostics, bilingual zh-CN/en
-- Legacy Tkinter client (kept for compatibility): `python legacy_main.py`
+- Android Camera2 live preview and WiFi MJPEG streaming over HTTP
+- `GET /ping` (JSON status) and `GET /stream` (multipart MJPEG) endpoints
+- Windows PySide6 vision workbench (default client): top bar + live view + mode
+  inspector + collapsible diagnostics, bilingual zh-CN/en
 - Strict MJPEG parser (boundary + Content-Length + SOI/EOI)
-- Grayscale / Canny / HSV / contour experiments
-- Fully local operation, no cloud / no account / no telemetry
+- Five vision modes: Original / Gray / Canny / HSV / Contours
+- Legacy Tkinter client (compatibility only): `python legacy_main.py`
+- Fully local operation — no cloud, no account, no telemetry
 
 ## Getting started
 
@@ -26,29 +42,32 @@ processing with OpenCV.
 python main.py --host 192.168.x.x
 python main.py --host 192.168.x.x --lang en
 
-# Legacy Tkinter client (compatibility)
+# Legacy Tkinter client (compatibility only)
 python legacy_main.py --host 192.168.x.x
 ```
 
-Replace `192.168.x.x` with the IP shown in the phone app. Start streaming on the
-phone first. Parameters are shown per active vision mode; the diagnostics panel
-is collapsed by default; shortcuts: S save, R reconnect, 1-5 switch mode,
-Ctrl+Q quit. Language choice is saved locally; the project has no telemetry.
+1. Start the phone app and tap **Start Streaming** first.
+2. Replace `192.168.x.x` with the IP shown in the phone app (not an example IP).
+   Port defaults to 8080.
+3. Switch vision modes with buttons or keys 1-5; `S` saves a screenshot,
+   `R` reconnects, `Ctrl+Q` quits.
+4. The diagnostics panel is collapsed by default; language choice is saved locally.
+
+Requires Python 3.12+: `pip install -r requirements.txt`.
 
 ## Windows portable package (no Python required)
 
 A `PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip` (PyInstaller onedir) is produced
-at build time. **Not an official release yet** — local build artifact only.
+at build time. **Not an official release yet** — a local build artifact only.
 
 1. Unzip and double-click `PhoneVisionLab.exe`.
-2. On first launch enter the IP shown in the phone app (not the example IP),
-   port 8080 by default.
-3. The phone must be streaming first.
-4. The last successful address is saved locally only (QSettings) and is editable.
-5. Logs: `%LOCALAPPDATA%\PhoneVisionLab\logs\phonevision.log` (local rotation,
-   no image content, no telemetry).
-6. Switch Simplified Chinese / English in the top bar; the choice is saved locally.
-7. Unsigned: Windows SmartScreen may warn "unknown publisher" — click "Run anyway".
+2. The connection dialog opens: enter the IP shown in the phone app (not the
+   example IP), port 8080 by default. The phone must be streaming first.
+3. The last successful address is saved locally only (QSettings) and is editable.
+4. Logs: `%LOCALAPPDATA%\PhoneVisionLab\logs\phonevision.log` (local rotation, no
+   image content, no telemetry).
+5. Switch Simplified Chinese / English in the top bar; the choice is saved locally.
+6. Unsigned: Windows SmartScreen may warn "unknown publisher" — click "Run anyway".
 
 Verify the ZIP checksum:
 
@@ -56,35 +75,36 @@ Verify the ZIP checksum:
 certutil -hashfile PhoneVisionLab-0.1.0-alpha.1-windows-x64.zip SHA256
 ```
 
-Running from source is still the official path (see Getting started above); the
-Legacy Tkinter entry `legacy_main.py` remains but is not the default. Fully local,
-no telemetry.
+Running from source is still the official path (see Getting started above).
+Third-party licenses and the Qt/PySide6 LGPL-3.0 compliance details are bundled in
+the package (`THIRD_PARTY_NOTICES.md` + `licenses/`) and documented in
+[docs/qt-lgpl-compliance.md](docs/qt-lgpl-compliance.md).
 
-## What is in progress, not yet complete
+## Privacy
 
-- USB as a formal product feature (adb forward is a reusable technique only)
-- Automatic device discovery
-- Secure pairing
-- Remote start/stop and camera parameter control
-- Learning mode / experiment mode / project save / Python code export
-- Windows installer
+- Fully local: no telemetry, no analytics, no cloud, no account.
+- Local logs record only version/start/connection state/errors — never image
+  content, screenshots, parameter values, or secrets.
+- **Caution**: the HTTP stream has **no authentication**. Anyone on the same LAN
+  can fetch the stream while the app is streaming. Use only on a trusted network.
 
-## Modules
+## Roadmap
 
-| Path | Description |
-| --- | --- |
-| `android/` | Android sensor app: Camera2 + ImageReader(JPEG) + NanoHTTPD MJPEG server |
-| `pc-client/` | Windows client: strict MJPEG reader, OpenCV vision modes, PySide6 vision workbench (default), legacy Tkinter client |
+USB transport, automatic device discovery, secure pairing, learning/experiment
+mode, project save, and signed releases are planned — no dates promised. See
+[ROADMAP.md](ROADMAP.md).
 
-## Important warnings
+## Troubleshooting
 
-- **Not ready for v1.0.**
-- The current HTTP stream has **no authentication**. Anyone on the same LAN
-  can fetch the stream while the app is streaming.
-- Use only on a **trusted local network**.
-- **USB is not yet a formal product feature.**
-- Automatic discovery and secure pairing are **not implemented**.
+See [docs/troubleshooting.md](docs/troubleshooting.md) — includes SmartScreen,
+connection failures, image-quality issues, and log locations.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SUPPORT.md](SUPPORT.md).
+Security issues: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Qt / PySide6 are used under LGPL-3.0 (Community Edition) — see
+[docs/qt-lgpl-compliance.md](docs/qt-lgpl-compliance.md).
