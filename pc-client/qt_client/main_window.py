@@ -32,13 +32,14 @@ import numpy as np
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QButtonGroup, QFrame, QHBoxLayout, QLabel, QMainWindow,
+    QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel, QMainWindow,
     QPushButton, QScrollArea, QSlider, QVBoxLayout, QWidget,
 )
 
 import app_model
 import mjpeg_reader
 import vision_modes
+from qt_client.i18n import Translator
 
 # 保存截图目录：qt_client 的上一级 captures/
 CAPTURES_DIR = os.path.join(
@@ -63,7 +64,7 @@ MODE_PARAM_KEYS = {
     ],
 }
 
-# 滑块中文副标签（如 Canny Low -> "阈值下限"、H Min -> "色相下限"）。
+# 滑块英文主标签（两种语言一致，与 STRINGS 参数主标签对齐）。
 SLIDER_LABELS = {
     "canny_low": "Canny Low", "canny_high": "Canny High",
     "h_min": "H Min", "h_max": "H Max",
@@ -71,38 +72,62 @@ SLIDER_LABELS = {
     "v_min": "V Min", "v_max": "V Max",
     "contour_min_area": "Min Area",
 }
-SLIDER_SUB_LABELS = {
-    "canny_low": "阈值下限", "canny_high": "阈值上限",
-    "h_min": "色相下限", "h_max": "色相上限",
-    "s_min": "饱和度下限", "s_max": "饱和度上限",
-    "v_min": "明度下限", "v_max": "明度上限",
-    "contour_min_area": "最小面积",
+# 参数键 → STRINGS 副标签 key（双语）。
+SLIDER_SUB_KEYS = {
+    "canny_low": "param_canny_low_sub", "canny_high": "param_canny_high_sub",
+    "h_min": "param_h_min_sub", "h_max": "param_h_max_sub",
+    "s_min": "param_s_min_sub", "s_max": "param_s_max_sub",
+    "v_min": "param_v_min_sub", "v_max": "param_v_max_sub",
+    "contour_min_area": "param_contour_min_area_sub",
 }
 
-# 教学提示：单行文案随模式更新。
-MODE_HINTS = {
-    vision_modes.MODE_ORIGINAL: "观察手机摄像头的原始画面",
-    vision_modes.MODE_GRAY: "先观察亮度结构，再进入阈值和边缘处理",
-    vision_modes.MODE_CANNY: "Low以下丢弃，High以上保留，中间边缘需与强边相连",
-    vision_modes.MODE_HSV: "白色区域表示当前颜色范围被选中",
-    vision_modes.MODE_CONTOUR: "Min Area用于滤除面积较小的噪点",
+# 教学提示：key 随模式更新（双语字典取文案）。
+MODE_HINT_KEYS = {
+    vision_modes.MODE_ORIGINAL: "hint_original",
+    vision_modes.MODE_GRAY: "hint_gray",
+    vision_modes.MODE_CANNY: "hint_canny",
+    vision_modes.MODE_HSV: "hint_hsv",
+    vision_modes.MODE_CONTOUR: "hint_contour",
+}
+# 无参数模式的参数区空状态 key（双语）。
+MODE_EMPTY_KEYS = {
+    vision_modes.MODE_ORIGINAL: "param_empty_original",
+    vision_modes.MODE_GRAY: "param_empty_gray",
 }
 
-MODE_NAMES = {
-    vision_modes.MODE_ORIGINAL: "原始", vision_modes.MODE_GRAY: "灰度",
-    vision_modes.MODE_CANNY: "Canny", vision_modes.MODE_HSV: "HSV",
-    vision_modes.MODE_CONTOUR: "轮廓",
+# 模式 → STRINGS 模式名 key（双语）。
+MODE_NAME_KEYS = {
+    vision_modes.MODE_ORIGINAL: "mode_original",
+    vision_modes.MODE_GRAY: "mode_gray",
+    vision_modes.MODE_CANNY: "mode_canny",
+    vision_modes.MODE_HSV: "mode_hsv",
+    vision_modes.MODE_CONTOUR: "mode_contour",
+}
+
+# 语言选择器映射：界面选项显示名 → Translator 语言标识。
+LANGUAGE_SELECTOR_OPTIONS = {
+    "简体中文": "zh-CN",
+    "English": "en",
 }
 
 
 class MainWindow(QMainWindow):
     """PhoneVision Lab 主窗口（视觉工作台布局）。"""
 
-    def __init__(self, stream_url, ping_url, ping_info):
+    def __init__(self, stream_url, ping_url, ping_info, translator=None):
         super().__init__()
         self.stream_url = stream_url
         self.ping_url = ping_url
         self.ping_info = ping_info
+
+        # 双语文案服务：外部可注入（main.py 传入全局 Translator）；未传时
+        # 内部创建默认实例（zh-CN 兼容），存为 self.tr 并暴露 self.translator 别名。
+        self.tr = translator if translator is not None else Translator()
+        self.translator = self.tr
+        # 语言切换（下拉或外部 set_language）统一走 _apply_language 刷新文案。
+        self.tr.language_changed.connect(self._apply_language)
+        # 当前 toast 的可重译状态：(i18n_key, kwargs, kind)。语言切换时重发。
+        self._toast_state = None
 
         # 窗口标题固定为 "PhoneVision Lab"。
         # HTTPConnectionPool/保存结果/错误信息绝不允许进标题。
@@ -184,20 +209,26 @@ class MainWindow(QMainWindow):
         outer.addLayout(content, 1)
 
         # 画面区：VideoView 占主窗口大部分空间
-        self.video_view = VideoView()
+        self.video_view = VideoView(translator=self.tr)
         self.video_view.reconnect_requested.connect(self.reconnect)
+        self.tr.language_changed.connect(self.video_view._apply_language)
         content.addWidget(self.video_view, 1)
 
         # 右侧检查器：模式 1-5 + 当前模式参数 + 教学提示
         self._build_inspector(content)
 
         # ---- 底部诊断区（可折叠）----
-        self.diagnostics = DiagnosticsPanel()
+        self.diagnostics = DiagnosticsPanel(translator=self.tr)
+        self.tr.language_changed.connect(self.diagnostics._apply_language)
         outer.addWidget(self.diagnostics)
 
         # ---- Toast（顶栏下浮层）----
         self.toast = ToastBanner()
         outer.addWidget(self.toast)
+
+        # 按当前语言刷新全部可见文案（构造时 _apply_mode_params 等已用英文
+        # 标签初始化滑块副标签，这里统一切到正确语言）。
+        self._apply_language()
 
     def _build_topbar(self, outer, StatusPill, ToastBanner):
         """顶栏：左侧品牌+设备名，右侧 StatusPill + 保存/重连按钮。"""
@@ -216,27 +247,41 @@ class MainWindow(QMainWindow):
         device_sep.setProperty("textRole", "muted")
         bar.addWidget(device_sep)
 
-        self.device_label = QLabel("等待设备信息")
+        self.device_label = QLabel(self.tr.text("device_placeholder"))
         self.device_label.setObjectName("deviceLabel")
         bar.addWidget(self.device_label)
 
         bar.addStretch(1)
 
+        # 语言选择器：简体中文 / English，切换即时生效并持久化。
+        self.language_selector = QComboBox()
+        self.language_selector.setObjectName("languageSelector")
+        for label, lang in LANGUAGE_SELECTOR_OPTIONS.items():
+            self.language_selector.addItem(label, lang)
+        self.language_selector.setCurrentIndex(
+            list(LANGUAGE_SELECTOR_OPTIONS.values()).index(self.tr.language()))
+        self.language_selector.currentIndexChanged.connect(
+            self._on_language_selector_changed)
+        self.language_selector.setToolTip(self.tr.text("language"))
+        bar.addWidget(self.language_selector)
+
         self.status_pill = StatusPill()
         self.status_pill.set_state(self.stats["state"])
         bar.addWidget(self.status_pill)
 
-        save_btn = QPushButton("保存截图")
-        save_btn.setProperty("buttonRole", "primary")
-        save_btn.setFixedHeight(32)
-        save_btn.clicked.connect(self.save_capture)
-        bar.addWidget(save_btn)
+        self.save_btn = QPushButton(self.tr.text("save_screenshot"))
+        self.save_btn.setObjectName("saveButton")
+        self.save_btn.setProperty("buttonRole", "primary")
+        self.save_btn.setFixedHeight(32)
+        self.save_btn.clicked.connect(self.save_capture)
+        bar.addWidget(self.save_btn)
 
-        reconnect_btn = QPushButton("重新连接")
-        reconnect_btn.setProperty("buttonRole", "ghost")
-        reconnect_btn.setFixedHeight(32)
-        reconnect_btn.clicked.connect(self.reconnect)
-        bar.addWidget(reconnect_btn)
+        self.reconnect_btn = QPushButton(self.tr.text("reconnect"))
+        self.reconnect_btn.setObjectName("reconnectButton")
+        self.reconnect_btn.setProperty("buttonRole", "ghost")
+        self.reconnect_btn.setFixedHeight(32)
+        self.reconnect_btn.clicked.connect(self.reconnect)
+        bar.addWidget(self.reconnect_btn)
 
         outer.addWidget(topbar)
 
@@ -257,13 +302,14 @@ class MainWindow(QMainWindow):
         mbox.setContentsMargins(12, 10, 12, 12)
         mbox.setSpacing(8)
 
-        mtitle = QLabel("视觉模式")
+        mtitle = QLabel(self.tr.text("mode_title"))
         mtitle.setProperty("textRole", "groupTitle")
         mbox.addWidget(mtitle)
 
         self._build_mode_buttons(mbox)
 
-        self.mode_label = QLabel(f"当前: {MODE_NAMES[self.mode]}")
+        self.mode_label = QLabel(
+            self.tr.text("current_mode", mode=self._mode_name(self.mode)))
         self.mode_label.setProperty("textRole", "caption")
         mbox.addWidget(self.mode_label)
 
@@ -276,7 +322,7 @@ class MainWindow(QMainWindow):
         pv.setContentsMargins(12, 10, 12, 12)
         pv.setSpacing(6)
 
-        ptitle = QLabel("当前模式参数")
+        ptitle = QLabel(self.tr.text("param_title"))
         ptitle.setProperty("textRole", "groupTitle")
         pv.addWidget(ptitle)
 
@@ -310,16 +356,15 @@ class MainWindow(QMainWindow):
         self.mode_group = QButtonGroup(self)
         self.mode_group.setExclusive(True)
         self.mode_buttons = {}
+        # 每个模式的编号（1-5）与 STRINGS key，供按钮文本/apply 语言刷新用。
+        self._mode_numbers = {}
+        self._mode_name_keys = dict(MODE_NAME_KEYS)
 
-        mode_defs = [
-            ("1", "原始", vision_modes.MODE_ORIGINAL),
-            ("2", "灰度", vision_modes.MODE_GRAY),
-            ("3", "Canny", vision_modes.MODE_CANNY),
-            ("4", "HSV", vision_modes.MODE_HSV),
-            ("5", "轮廓", vision_modes.MODE_CONTOUR),
-        ]
-        for key, label, mode in mode_defs:
-            btn = QPushButton(f"{key} {label}")
+        for num, mode in enumerate(
+                (vision_modes.MODE_ORIGINAL, vision_modes.MODE_GRAY,
+                 vision_modes.MODE_CANNY, vision_modes.MODE_HSV,
+                 vision_modes.MODE_CONTOUR), start=1):
+            btn = QPushButton(f"{num} {self._mode_name(mode)}")
             btn.setObjectName("modeButton")
             btn.setProperty("mode", mode)
             btn.setCheckable(True)
@@ -327,6 +372,7 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(lambda _=False, m=mode: self.set_mode(m))
             self.mode_group.addButton(btn)
             self.mode_buttons[mode] = btn
+            self._mode_numbers[mode] = num
             parent.addWidget(btn)
         # 默认选中"原始"
         self.mode_buttons[vision_modes.MODE_ORIGINAL].setChecked(True)
@@ -335,6 +381,7 @@ class MainWindow(QMainWindow):
         """参数滑块（9 个全部存在，仅按模式隐藏；滑块带中文副标签）。"""
         self.sliders = {}
         self.slider_value_labels = {}
+        self._slider_sub_labels = {}
         # 记录每个参数对应的行容器（QWidget，便于 setVisible 整行隐藏）
         self._param_rows = {}
 
@@ -352,7 +399,7 @@ class MainWindow(QMainWindow):
             lab.setProperty("textRole", "caption")
             lab.setFixedWidth(88)
             lab_row.addWidget(lab)
-            sub = QLabel(SLIDER_SUB_LABELS[key])
+            sub = QLabel(self.tr.text(SLIDER_SUB_KEYS[key]))
             sub.setProperty("textRole", "hint")
             lab_row.addWidget(sub, 1)
             row.addLayout(lab_row)
@@ -376,6 +423,7 @@ class MainWindow(QMainWindow):
 
             self.sliders[key] = slider
             self.slider_value_labels[key] = vlab
+            self._slider_sub_labels[key] = sub
             self._param_rows[key] = row_widget
             parent.insertWidget(parent.count() - 1, row_widget)  # 插到 stretch 之前
 
@@ -397,12 +445,62 @@ class MainWindow(QMainWindow):
 
     def _apply_mode_hint(self):
         """更新教学提示文案与参数区空状态。"""
-        hint = MODE_HINTS.get(self.mode, "")
-        self.hint_label.setText(hint)
+        hint = self.tr.text(MODE_HINT_KEYS.get(self.mode, ""))
         empty = not MODE_PARAM_KEYS.get(self.mode, [])
+        if empty:
+            hint = self.tr.text(
+                MODE_EMPTY_KEYS.get(self.mode, "param_empty_original"))
+        self.hint_label.setText(hint)
         self.hint_label.setProperty("hintRole", "empty" if empty else "active")
         self.hint_label.style().unpolish(self.hint_label)
         self.hint_label.style().polish(self.hint_label)
+
+    def _mode_name(self, mode):
+        """取某模式的当前语言显示名（编号由按钮文本拼，这里只回翻译名）。"""
+        return self.tr.text(MODE_NAME_KEYS.get(mode, "mode_original"))
+
+    # =====================================================================
+    # 语言切换
+    # =====================================================================
+
+    def _on_language_selector_changed(self, index):
+        """下拉切换语言：持久化并触发 language_changed → _apply_language。"""
+        lang = self.language_selector.itemData(index)
+        if lang and lang != self.tr.language():
+            self.tr.set_language(lang, persist=True)
+
+    def _apply_language(self):
+        """按当前语言刷新全部可见文案（不重启网络/模型/模式/参数）。
+
+        只更新"纯文案"控件，绝不动模式、参数值、诊断展开态、视频画面与
+        AppModel——这些是 UI 用户状态，必须与语言正交（P0-4B 契约）。
+        """
+        # 顶栏：设备占位、保存/重连按钮、语言选择器 tooltip
+        self.device_label.setText(self.tr.text("device_placeholder"))
+        self.save_btn.setText(self.tr.text("save_screenshot"))
+        self.reconnect_btn.setText(self.tr.text("reconnect"))
+        self.language_selector.setToolTip(self.tr.text("language"))
+
+        # 模式按钮（编号 + 翻译名，格式 f"{num} {name}"）
+        for mode, btn in self.mode_buttons.items():
+            num = self._mode_numbers.get(mode, 1)
+            btn.setText(f"{num} {self._mode_name(mode)}")
+
+        # 当前模式标签
+        self.mode_label.setText(
+            self.tr.text("current_mode", mode=self._mode_name(self.mode)))
+
+        # 教学提示 / 参数区空状态
+        self._apply_mode_hint()
+
+        # 参数滑块副标签
+        for key, sub in self._slider_sub_labels.items():
+            sub.setText(self.tr.text(SLIDER_SUB_KEYS[key]))
+
+        # 若当前有 toast 显示，用新语言重发（错误 toast 由 _update_metrics 接管）
+        if self._toast_state is not None:
+            key, kwargs, kind = self._toast_state
+            self.toast.show_message(self.tr.text(key, **kwargs), kind)
 
     # =====================================================================
     # 快捷键
@@ -435,7 +533,8 @@ class MainWindow(QMainWindow):
         btn = self.mode_buttons.get(mode)
         if btn is not None and not btn.isChecked():
             btn.setChecked(True)
-        self.mode_label.setText(f"当前: {MODE_NAMES.get(mode, mode)}")
+        self.mode_label.setText(
+            self.tr.text("current_mode", mode=self._mode_name(mode)))
         self._apply_mode_params()
         self._apply_mode_hint()
 
@@ -447,7 +546,8 @@ class MainWindow(QMainWindow):
         frame, _ = self.reader.get_latest_frame()
         if frame is None:
             # 无帧：warning 通道，不改标题、不写 error 通道
-            self.toast.show_message("当前无画面可保存", "warning")
+            self._toast_state = ("toast_no_frame", {}, "warning")
+            self.toast.show_message(self.tr.text("toast_no_frame"), "warning")
             return
         try:
             import cv2
@@ -459,11 +559,15 @@ class MainWindow(QMainWindow):
             cv2.imwrite(os.path.join(CAPTURES_DIR, f"{tag}-original.jpg"), frame)
             cv2.imwrite(os.path.join(CAPTURES_DIR, f"{tag}-{self.mode}.png"), disp)
         except Exception as e:  # noqa: BLE001 - 保存失败走 error toast
-            self.toast.show_message(f"保存失败: {e}", "error")
+            self._toast_state = ("toast_save_failed", {"error": str(e)}, "error")
+            self.toast.show_message(
+                self.tr.text("toast_save_failed", error=str(e)), "error")
             return
         path = os.path.join(CAPTURES_DIR, f"{tag}-{self.mode}.png")
         # 保存成功：success 通道，绝不写 error 通道、绝不改标题
-        self.toast.show_message(f"已保存: {path}", "success")
+        self._toast_state = ("toast_saved", {"path": path}, "success")
+        self.toast.show_message(
+            self.tr.text("toast_saved", path=path), "success")
 
     def reconnect(self):
         # 手动重连：AppModel 内部在后台线程执行 stop+start，不阻塞 GUI
@@ -505,16 +609,21 @@ class MainWindow(QMainWindow):
             # 断流/未连接占位分支：交给 VideoView 绘制居中占位。
             # 状态名用大写，匹配 VideoView.PLACEHOLDER_CONFIG。
             if snap.connection_state == "Stopped":
-                self.video_view.set_placeholder("Stopped", detail="已停止")
+                self.video_view.set_placeholder(
+                    "Stopped", detail=self.tr.text("placeholder_stopped"))
             elif snap.connection_state == "Reconnecting":
                 self.video_view.set_placeholder(
-                    "Reconnecting", detail="视频流已中断，正在重连...")
+                    "Reconnecting",
+                    detail=self.tr.text("placeholder_reconnecting_sub"))
             elif snap.last_error:
                 self.video_view.set_placeholder(
-                    "Error", detail=snap.last_error or "连接错误")
+                    "Error", detail=snap.last_error
+                    or self.tr.text("placeholder_error"))
             else:
                 self.video_view.set_placeholder(
-                    "Connecting", detail=f"状态: {snap.connection_state}")
+                    "Connecting",
+                    detail=f"{self.tr.text('placeholder_connecting_sub')}: "
+                           f"{snap.connection_state}")
 
         # 从共享快照同步统计（不再在本窗口自算 FPS/吞吐/丢帧）
         st = self.stats
@@ -534,7 +643,7 @@ class MainWindow(QMainWindow):
         if snap.device_name:
             self.device_label.setText(snap.device_name)
         else:
-            self.device_label.setText("等待设备信息")
+            self.device_label.setText(self.tr.text("device_placeholder"))
 
     def _show_frame(self, frame_bgr):
         """把 BGR 帧转 QPixmap 显示到画面区（等比例缩放）。"""
@@ -557,7 +666,7 @@ class MainWindow(QMainWindow):
         if dev:
             self.device_label.setText(dev)
         else:
-            self.device_label.setText("等待设备信息")
+            self.device_label.setText(self.tr.text("device_placeholder"))
 
         # 错误语义：真实错误走 error toast；恢复后 clear()。
         # 注意：保存成功/无画面是 warning/success 通道，绝不进 error。

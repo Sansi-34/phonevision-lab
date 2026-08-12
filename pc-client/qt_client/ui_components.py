@@ -69,7 +69,6 @@ class StatusPill(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("statusPill")
-        self.setAccessibleName("连接状态")
         self.setProperty("pillRole", "status")  # QSS 可给胶囊整体加底
         self._state = "Idle"
 
@@ -91,7 +90,11 @@ class StatusPill(QWidget):
         self.set_state(self._state)
 
     def set_state(self, state: str) -> None:
-        """切换连接状态：更新圆点颜色与文字。未知状态一律回落到灰色 idle。"""
+        """切换连接状态：更新圆点颜色与文字。未知状态一律回落到灰色 idle。
+
+        文字显示英文专名（Streaming/Connecting/...），双语文案由主窗口的
+        占位/状态映射接管，本组件保持状态语义稳定。
+        """
         self._state = state
         role, _ = STATUS_COLORS.get(state, ("idle", "#5C6470"))
         for w in (self._dot, self._text):
@@ -119,6 +122,12 @@ TOAST_ICONS = {
     "warning": "!",
     "error":   "✕",
 }
+TOAST_ACCESSIBLE_NAMES = {
+    "success": "Success notification",
+    "info":    "Information notification",
+    "warning": "Warning notification",
+    "error":   "Error notification",
+}
 
 
 class ToastBanner(QFrame):
@@ -138,7 +147,7 @@ class ToastBanner(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("toastBanner")
-        self.setAccessibleName("通知条")
+        self.setAccessibleName("Toast")
         self._kind = "info"
 
         # 单发定时器：到点自动 clear。每次 show_message 都会重启它。
@@ -174,6 +183,8 @@ class ToastBanner(QFrame):
         self._icon.setText(TOAST_ICONS.get(kind, "i"))
         self._message.setText(text)
         self._message.setToolTip(text)  # 超长时悬停可看全文
+        self.setAccessibleName(TOAST_ACCESSIBLE_NAMES.get(
+            kind, "Notification"))
         if auto_dismiss_ms > 0:
             self._dismiss_timer.start(auto_dismiss_ms)
         self.show()
@@ -238,13 +249,16 @@ class VideoView(QWidget):
 
     reconnect_requested = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, translator=None):
         super().__init__(parent)
         self.setObjectName("videoView")
-        self.setAccessibleName("视频画面")
-        self.setToolTip("实时视频画面")
+        self.setAccessibleName("Video view")
+        self.setToolTip("Live video")
         self._source_pixmap = QPixmap()  # 原始帧，缩放始终以此为源
         self._render_state = "stopped"
+        # 双语：外部可注入 Translator；未注入时占位文案用 PLACEHOLDER_CONFIG 默认
+        self._tr = translator
+        self._current_placeholder = None  # 当前占位状态，供语言切换刷新
 
         # 黑色兜底背景：即使 QSS 未覆盖也保证黑边。QSS 可再覆盖边框圆角等。
         pal = self.palette()
@@ -317,10 +331,10 @@ class VideoView(QWidget):
         pbox.addWidget(self._placeholder_sub)
 
         # 重新连接按钮：仅 Reconnecting 占位显示；点击 emit 信号，由主窗口去重连。
-        self._reconnect_btn = QPushButton("重新连接", self._placeholder)
+        self._reconnect_btn = QPushButton("Reconnect", self._placeholder)
         self._reconnect_btn.setObjectName("videoReconnectButton")
         self._reconnect_btn.setProperty("buttonRole", "ghost")
-        self._reconnect_btn.setToolTip("点击立即重连")
+        self._reconnect_btn.setToolTip("Reconnect now")
         self._reconnect_btn.clicked.connect(
             lambda: self.reconnect_requested.emit())
         pbox.addWidget(self._reconnect_btn, 0, Qt.AlignCenter)
@@ -343,7 +357,7 @@ class VideoView(QWidget):
 
     def set_frame_info(self, width: int, height: int, disp_fps: float) -> None:
         """更新左下角信息浮层：分辨率 + 显示 FPS。"""
-        self._info_label.setText(f"{width}x{height}   显示 {disp_fps:.1f} FPS")
+        self._info_label.setText(f"{width}x{height}   {disp_fps:.1f} FPS")
 
     def set_placeholder(self, state: str, detail: str = "") -> None:
         """切换为居中占位。state 取 Connecting/Reconnecting/Stopped/Error（Idle 亦可）。
@@ -353,14 +367,42 @@ class VideoView(QWidget):
         cfg = PLACEHOLDER_CONFIG.get(state, PLACEHOLDER_CONFIG["Connecting"])
         self._render_state = cfg["render_state"]
         self._placeholder_icon.setText(cfg["icon"])
-        self._placeholder_title.setText(cfg["title"])
-        self._placeholder_sub.setText(detail or cfg["sub"])
+        self._current_placeholder = state
+        title, sub = self._placeholder_texts(state, cfg, detail)
+        self._placeholder_title.setText(title)
+        self._placeholder_sub.setText(sub)
         # 只有 Reconnecting 占位显示重连按钮
         self._reconnect_btn.setVisible(state == "Reconnecting")
         self._frame_label.setPixmap(QPixmap())  # 清掉旧帧，背后只留黑
         self._info_label.hide()
         self._placeholder.show()
         self._placeholder.raise_()
+
+    def _placeholder_texts(self, state, cfg, detail=""):
+        """返回 (title, sub) 占位文案；有 Translator 时走双语，否则用默认。"""
+        if self._tr is None:
+            return cfg["title"], (detail or cfg["sub"])
+        key_map = {
+            "Connecting": ("placeholder_connecting", "placeholder_connecting_sub"),
+            "Idle": ("placeholder_connecting", "placeholder_connecting_sub"),
+            "Reconnecting": ("placeholder_reconnecting", "placeholder_reconnecting_sub"),
+            "Stopped": ("placeholder_stopped", "placeholder_stopped_sub"),
+            "Error": ("placeholder_error", "placeholder_error_sub"),
+        }
+        t_key, s_key = key_map.get(state, ("placeholder_connecting",
+                                           "placeholder_connecting_sub"))
+        title = self._tr.text(t_key)
+        sub = detail or self._tr.text(s_key)
+        return title, sub
+
+    def _apply_language(self) -> None:
+        """语言切换时刷新占位文案（保持当前占位状态）。"""
+        if self._current_placeholder is not None:
+            state = self._current_placeholder
+            cfg = PLACEHOLDER_CONFIG.get(state, PLACEHOLDER_CONFIG["Connecting"])
+            title, sub = self._placeholder_texts(state, cfg)
+            self._placeholder_title.setText(title)
+            self._placeholder_sub.setText(sub)
 
     @property
     def render_state(self) -> str:
@@ -401,19 +443,20 @@ class VideoView(QWidget):
 # DiagnosticsPanel —— 诊断面板
 # =====================================================================
 
-# (显示名, values 键, 中文 tooltip)。resolution 由 width/height 合成，不单独入键。
+# (显示名默认, values 键, 中文 tooltip, i18n 标签 key, i18n tooltip key)。
+# resolution 由 width/height 合成，不单独入键。
 MAIN_METRICS = [
-    ("接收FPS", "recv_fps", "PC实际接收速率"),
-    ("显示FPS", "disp_fps", "实际显示的新画面频率"),
-    ("丢帧", "dropped", "手机发出但电脑没收到的帧"),
+    ("接收FPS", "recv_fps", "PC实际接收速率", "metric_recv_fps", "tip_recv_fps"),
+    ("显示FPS", "disp_fps", "实际显示的新画面频率", "metric_disp_fps", "tip_disp_fps"),
+    ("丢帧", "dropped", "手机发出但电脑没收到的帧", "metric_dropped", "tip_dropped"),
 ]
 EXTRA_METRICS = [
-    ("采集FPS", "phone_fps", "手机端采集帧率（来自 /ping）"),
-    ("带宽Mbps", "mbps", "网络吞吐，反映推流带宽占用"),
-    ("平均JPEG", "avg_jpeg_mb", "每帧 JPEG 平均大小"),
-    ("接收帧", "received", "已成功解析的帧总数"),
-    ("无效帧", "invalid", "损坏或无法解析的帧数"),
-    ("分辨率", "resolution", "视频画面宽x高"),
+    ("采集FPS", "phone_fps", "手机端采集帧率（来自 /ping）", "metric_phone_fps", "tip_phone_fps"),
+    ("带宽Mbps", "mbps", "网络吞吐，反映推流带宽占用", "metric_mbps", "tip_mbps"),
+    ("平均JPEG", "avg_jpeg_mb", "每帧 JPEG 平均大小", "metric_avg_jpeg", "tip_avg_jpeg"),
+    ("接收帧", "received", "已成功解析的帧总数", "metric_received", "tip_received"),
+    ("无效帧", "invalid", "损坏或无法解析的帧数", "metric_invalid", "tip_invalid"),
+    ("分辨率", "resolution", "视频画面宽x高", "metric_resolution", "tip_resolution"),
 ]
 
 
@@ -432,10 +475,11 @@ class DiagnosticsPanel(QWidget):
       panel.toggle() / panel.set_expanded(True)
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, translator=None):
         super().__init__(parent)
         self.setObjectName("diagnosticsPanel")
         self.setAccessibleName("诊断面板")
+        self._tr = translator
         self._expanded = False
         self._value_labels: dict[str, QLabel] = {}
         self._extra_cells: list[QWidget] = []
@@ -446,11 +490,11 @@ class DiagnosticsPanel(QWidget):
 
         # ---- 标题行：标题 + 展开/收起切换按钮 ----
         header = QHBoxLayout()
-        title = QLabel("实时诊断")
-        title.setProperty("textRole", "groupTitle")
-        header.addWidget(title)
+        self._title_label = QLabel()
+        self._title_label.setProperty("textRole", "groupTitle")
+        header.addWidget(self._title_label)
         header.addStretch(1)
-        self._toggle_btn = QPushButton("展开诊断")
+        self._toggle_btn = QPushButton()
         self._toggle_btn.setObjectName("diagnosticsToggleButton")
         self._toggle_btn.setProperty("buttonRole", "ghost")
         self._toggle_btn.setCheckable(True)
@@ -463,13 +507,14 @@ class DiagnosticsPanel(QWidget):
         grid.setHorizontalSpacing(18)
         grid.setVerticalSpacing(8)
 
-        for col, (label, key, tip) in enumerate(MAIN_METRICS):
-            cell = self._make_metric_cell(label, key, tip, weak=(key == "dropped"))
+        for col, (label, key, tip, lk, tk) in enumerate(MAIN_METRICS):
+            cell = self._make_metric_cell(label, key, tip, lk, tk,
+                                          weak=(key == "dropped"))
             grid.addWidget(cell, 0, col)
 
-        for i, (label, key, tip) in enumerate(EXTRA_METRICS):
+        for i, (label, key, tip, lk, tk) in enumerate(EXTRA_METRICS):
             row, col = divmod(i, 3)
-            cell = self._make_metric_cell(label, key, tip)
+            cell = self._make_metric_cell(label, key, tip, lk, tk)
             grid.addWidget(cell, row + 1, col)
             self._extra_cells.append(cell)
 
@@ -518,7 +563,33 @@ class DiagnosticsPanel(QWidget):
         for cell in self._extra_cells:
             cell.setVisible(self._expanded)
         self._toggle_btn.setChecked(self._expanded)
-        self._toggle_btn.setText("收起诊断" if self._expanded else "展开诊断")
+        self._update_toggle_text()
+
+    def _update_toggle_text(self) -> None:
+        if self._tr:
+            key = "diag_collapse" if self._expanded else "diag_expand"
+            self._toggle_btn.setText(self._tr.text(key))
+        else:
+            self._toggle_btn.setText("收起诊断" if self._expanded else "展开诊断")
+
+    def _apply_language(self) -> None:
+        """语言切换时刷新标题、展开按钮和全部指标标签/tooltip。"""
+        if self._tr:
+            self._title_label.setText(self._tr.text("diag_title"))
+            self._update_toggle_text()
+            for label, key, tip, lk, tk in (MAIN_METRICS + EXTRA_METRICS):
+                cell = self._value_labels[key].parentWidget()
+                if cell is None:
+                    continue
+                tl = self._tr.text(lk)
+                tt = self._tr.text(tk)
+                # 更新标签（cell 第一个 QLabel 是标签）
+                for w in cell.findChildren(QLabel):
+                    if w.property("textRole") == "metricLabel":
+                        w.setText(tl)
+                        w.setToolTip(tt)
+                cell.setToolTip(tt)
+                self._value_labels[key].setToolTip(tt)
 
     def is_expanded(self) -> bool:
         return self._expanded
@@ -530,25 +601,32 @@ class DiagnosticsPanel(QWidget):
     # ---- 内部 ----
 
     def _make_metric_cell(self, label: str, key: str, tip: str,
+                          label_key: str, tip_key: str,
                           weak: bool = False) -> QWidget:
-        """构造一个"小标签在上 + 等宽数值在下"的指标格，并登记数值 QLabel。"""
+        """构造一个"小标签在上 + 等宽数值在下"的指标格，并登记数值 QLabel。
+
+        label_key/tip_key 是 i18n 字典 key；有 Translator 时用翻译，否则用
+        label/tip 默认值。
+        """
         cell = QWidget(self)
         cell.setProperty("metricRole", "cell")
-        cell.setToolTip(tip)
+        text_label = self._tr.text(label_key) if self._tr else label
+        text_tip = self._tr.text(tip_key) if self._tr else tip
+        cell.setToolTip(text_tip)
         box = QVBoxLayout(cell)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(2)
 
-        lab = QLabel(label)
+        lab = QLabel(text_label)
         lab.setProperty("textRole", "metricLabel")
-        lab.setToolTip(tip)
+        lab.setToolTip(text_tip)
         box.addWidget(lab)
 
         val = QLabel("--")
         # weak=True 表示"弱化"指标（如丢帧）：用不同 valueRole 让 QSS 调暗一点，
         # 视觉上不抢主要指标的注意力。
         val.setProperty("valueRole", "weak" if weak else "value")
-        val.setToolTip(tip)
+        val.setToolTip(text_tip)
         font = val.font()
         font.setFamily("Consolas")  # 等宽数值，数字跳动时更稳
         val.setFont(font)

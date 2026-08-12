@@ -29,27 +29,44 @@ QMainWindow {
     color: #E6EAF2;
 }
 QWidget {
-    font-family: "Segoe UI", "Microsoft YaHei UI";
+    /* 中文字体优先回退（Segoe UI 无中文字形，若系统无 YaHei 会显示方框字）；
+       实际字形由 fonts.py 的 QApplication 全局字体兜底，此处提供候选列表 */
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI";
     font-size: 9pt;
     color: #E6EAF2;
     /* 注意：不写 background，QLabel 等默认透明，透出父级背景 */
 }
 
 /* ---------- 顶栏 ---------- */
-QFrame#topbar {
+#topbar {
     background-color: #10141D;
     border: 1px solid #232A39;
     border-radius: 6px;
 }
-QLabel#brandLabel {
+#brandLabel {
     color: #E6EAF2;
     font-size: 11pt;
     font-weight: 700;
     letter-spacing: 1px;
 }
-QLabel#deviceLabel {
+#deviceLabel {
     color: #8A93A6;
     font-size: 9pt;
+    max-width: 220px;
+}
+#languageSelector {
+    color: #E6EAF2;
+    background-color: #1A2029;
+    border: 1px solid #232A39;
+    border-radius: 6px;
+    padding: 3px 8px;
+    min-width: 92px;
+}
+#saveButton {
+    font-weight: 600;
+}
+#reconnectButton {
+    font-weight: 500;
 }
 QLabel[textRole="muted"] { color: #4A5260; }
 
@@ -262,7 +279,7 @@ QToolTip {
    ============================================================ */
 
 /* ---------- StatusPill（状态灯：圆点 + 状态文本） ---------- */
-QFrame#statusPill {
+#statusPill {
     background-color: #1A2029;
     border: 1px solid #232A39;
     border-radius: 10px;
@@ -288,16 +305,16 @@ QLabel[textRole="chipValue"][chipState="error"]   { color: #F2645F; }
 QLabel[textRole="chipValue"][chipState="idle"]    { color: #8A93A6; }
 
 /* ---------- ToastBanner（toastRole 分色底） ---------- */
-QFrame#toast {
+#toastBanner {
     background-color: #1B2131;
     border: 1px solid #2A3140;
     border-radius: 8px;
     padding: 2px;
 }
-QFrame#toast[toastRole="success"] { background-color: rgba(61, 214, 140, 0.12); border-color: rgba(61, 214, 140, 0.45); }
-QFrame#toast[toastRole="info"]    { background-color: rgba(91, 124, 250, 0.12); border-color: rgba(91, 124, 250, 0.45); }
-QFrame#toast[toastRole="warning"] { background-color: rgba(245, 165, 36, 0.12); border-color: rgba(245, 165, 36, 0.45); }
-QFrame#toast[toastRole="error"]   { background-color: rgba(242, 100, 95, 0.12); border-color: rgba(242, 100, 95, 0.45); }
+#toastBanner[toastRole="success"] { background-color: rgba(61, 214, 140, 0.12); border-color: rgba(61, 214, 140, 0.45); }
+#toastBanner[toastRole="info"]    { background-color: rgba(91, 124, 250, 0.12); border-color: rgba(91, 124, 250, 0.45); }
+#toastBanner[toastRole="warning"] { background-color: rgba(245, 165, 36, 0.12); border-color: rgba(245, 165, 36, 0.45); }
+#toastBanner[toastRole="error"]   { background-color: rgba(242, 100, 95, 0.12); border-color: rgba(242, 100, 95, 0.45); }
 QLabel#toastText {
     color: #E6EAF2;
     font-size: 9pt;
@@ -305,7 +322,7 @@ QLabel#toastText {
 }
 
 /* ---------- VideoView（画面区：纯黑底 + 居中信息） ---------- */
-QFrame#videoView {
+#videoView {
     background-color: #000000;
     border: 1px solid #232A39;
     border-radius: 10px;
@@ -320,12 +337,12 @@ QLabel#videoInfo {
 }
 
 /* ---------- DiagnosticsPanel（底部诊断区） ---------- */
-QFrame#diagnosticsPanel {
+#diagnosticsPanel {
     background-color: #10141D;
     border: 1px solid #232A39;
     border-radius: 10px;
 }
-QPushButton#diagnosticsToggle {
+#diagnosticsToggleButton {
     background-color: transparent;
     border: none;
     color: #8A93A6;
@@ -333,7 +350,7 @@ QPushButton#diagnosticsToggle {
     text-align: left;
     padding: 2px 4px;
 }
-QPushButton#diagnosticsToggle:hover { color: #E6EAF2; }
+#diagnosticsToggleButton:hover { color: #E6EAF2; }
 QFrame#diagnosticsGrid {
     background-color: transparent;
     border: none;

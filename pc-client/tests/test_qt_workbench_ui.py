@@ -361,5 +361,142 @@ class QtWorkbenchUiTest(unittest.TestCase):
                            f"VideoView 高度应从 {h_small} 增至 {h_large}")
 
 
+class QtI18nUiTest(unittest.TestCase):
+    """P0-4B：语言实时切换更新各 UI 区域的真实控件文案。
+
+    覆盖：顶栏保存按钮 / StatusPill 状态文本 / 模式与教学提示 / 诊断与 tooltip /
+    参数占位 / 设备名占位。切换只更新文案层，不碰模式、参数、Model 实例、
+    诊断展开（这些见 test_qt_gui_build.QtI18nWidgetTest）。
+
+    依赖 P0-4B 源码（MainWindow 接入 translator）：未合入时整体 skip。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.test_qt_gui_build import TRANSLATOR_WIRED
+        if not TRANSLATOR_WIRED:
+            raise unittest.SkipTest("P0-4B MainWindow 未接入 Translator（等待源码 agent）")
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        from tests.test_qt_gui_build import TRANSLATOR_WIRED, _make_win
+        from qt_client.i18n import LANG_EN, LANG_ZH
+        if not TRANSLATOR_WIRED:
+            self.skipTest("P0-4B MainWindow 未接入 Translator（等待源码 agent）")
+        self.patcher = mock.patch("qt_client.main_window.app_model.AppModel",
+                                  FakeAppModel)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.win = _make_win(LANG_ZH)
+        self.win.show()
+        self.app.processEvents()
+        self.win._timer.stop()
+        self.LANG_EN = LANG_EN
+        self.LANG_ZH = LANG_ZH
+
+    def tearDown(self):
+        self.win.model.stop()
+        self.win.close()
+
+    def _switch_to_en(self):
+        self.win.translator.set_language(self.LANG_EN)
+        self.app.processEvents()
+
+    def _tr(self, key, **kw):
+        """按窗口当前语言取文案（断言从字典取，验证真实控件状态）。"""
+        return self.win.translator.text(key, **kw)
+
+    # ---- 顶栏 ----
+
+    def test_save_button_text_updates(self):
+        """顶栏保存按钮：中文 '保存截图' ↔ 英文 'Save Screenshot'。"""
+        from tests.test_qt_gui_build import _topbar_button
+        save = _topbar_button(self.win, "primary")
+        self.assertIsNotNone(save)
+        self.assertEqual(save.text(), self._tr("save_screenshot"))
+        self._switch_to_en()
+        self.assertEqual(save.text(), "Save Screenshot")
+
+    # ---- StatusPill ----
+
+    def test_status_pill_state_text_updates(self):
+        """StatusPill 状态文本随语言切换更新。"""
+        self.win.model._set_state("Streaming")
+        self.win._refresh()
+        zh_text = self.win.status_pill.state()
+        self.assertEqual(zh_text, "Streaming")  # 状态专名两语言保留英文
+        # 语言切换后 pill 状态不变（状态是模型语义，文案由组件映射）
+        self._switch_to_en()
+        self.assertEqual(self.win.status_pill.state(), "Streaming")
+        self.assertEqual(self.win.status_pill.state(), zh_text)
+
+    # ---- 模式 / 教学提示 ----
+
+    def test_mode_labels_and_hint_update(self):
+        """模式标签与教学提示随语言切换更新。"""
+        self.win.set_mode(vision_modes.MODE_CANNY)
+        self.assertEqual(self.win.mode_label.text(), self._tr("current_mode", mode="Canny"))
+        self.assertEqual(self.win.hint_label.text(), self._tr("hint_canny"))
+        self._switch_to_en()
+        self.assertEqual(self.win.mode_label.text(), "Current: Canny")
+        self.assertEqual(self.win.hint_label.text(),
+                         "Below Low is dropped, above High is kept, in-between edges must connect to a strong edge")
+        # 模式按钮名（英文专名）保持
+        self.assertEqual(self.win.mode_buttons[vision_modes.MODE_CANNY].text(),
+                         "3 Canny")
+
+    def test_contour_mode_button_localized(self):
+        """轮廓模式按钮：中文 '5 轮廓' ↔ 英文 '5 Contours'。"""
+        self.assertEqual(self.win.mode_buttons[vision_modes.MODE_CONTOUR].text(),
+                         f"5 {self._tr('mode_contour')}")
+        self._switch_to_en()
+        self.assertEqual(self.win.mode_buttons[vision_modes.MODE_CONTOUR].text(),
+                         "5 Contours")
+
+    # ---- 设备名 / 参数占位 ----
+
+    def test_device_placeholder_updates(self):
+        """设备名占位文案随语言切换更新。"""
+        self.win._refresh()
+        self.assertEqual(self.win.device_label.text(), self._tr("device_placeholder"))
+        self._switch_to_en()
+        self.assertEqual(self.win.device_label.text(), "Waiting for device")
+
+    # ---- 诊断 / tooltip ----
+
+    def test_diagnostics_tooltips_update(self):
+        """诊断区 tooltip 随语言切换更新。"""
+        self.win._refresh()
+        panel = self.win.diagnostics
+        # 主指标（接收FPS/显示FPS/丢帧）的 tooltip 随语言变化
+        cell = panel._value_labels["recv_fps"].parentWidget()
+        self.assertEqual(cell.toolTip(), self._tr("tip_recv_fps"))
+        self._switch_to_en()
+        self.assertEqual(cell.toolTip(),
+                         "Actual frames received by the PC per second")
+        # 标题行也切换
+        self.assertEqual(panel._toggle_btn.text(), self._tr("diag_expand"))
+
+    def test_placeholder_texts_update(self):
+        """画面占位主/副文案随语言切换更新（断流占位）。"""
+        self.win.model._set_stale(True)
+        self.win._refresh()
+        self.assertEqual(self.win.video_view._placeholder_title.text(),
+                         self._tr("placeholder_reconnecting"))
+        self._switch_to_en()
+        self.assertEqual(self.win.video_view._placeholder_title.text(),
+                         "Video stream interrupted")
+
+    # ---- Toast ----
+
+    def test_toast_message_updates(self):
+        """Toast 消息（无帧保存）随语言切换更新。"""
+        self.win.save_capture()  # 无帧 → warning toast
+        self.assertEqual(self.win.toast.current_kind(), "warning")
+        self.assertEqual(self.win.toast._message.text(), self._tr("toast_no_frame"))
+        self._switch_to_en()
+        self.assertEqual(self.win.toast._message.text(), "No frame to save")
+
+
 if __name__ == "__main__":
     unittest.main()

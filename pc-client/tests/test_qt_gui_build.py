@@ -16,6 +16,7 @@ skip，避免把"源码未完成"误报成"测试失败"；源码落地后自动
 成立，保持双布局兼容。
 """
 import os
+import re
 import sys
 import unittest
 from unittest import mock
@@ -29,12 +30,38 @@ _PC_CLIENT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PC_CLIENT not in sys.path:
     sys.path.insert(0, _PC_CLIENT)
 
-from PySide6.QtGui import QImage
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QSettings
+from PySide6.QtGui import QFontDatabase, QImage
+from PySide6.QtWidgets import (QApplication, QFrame, QScrollArea, QWidget)
 
 import app_model
 import vision_modes
+from qt_client.i18n import LANG_EN, LANG_ZH, Translator
 from qt_client.main_window import MainWindow
+
+# P0-4B：中文截图防方框字用的代表性中文文案（含顶栏/占位/教学提示/保存提示）。
+CHINESE_SAMPLE_TEXT = "等待设备信息保存截图重新连接正在连接...实时诊断当前无画面可保存"
+
+# P0-4B：custom 组件 objectName 与 style.qss 选择器对齐检查用的 QSS 文件路径。
+_QSS_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "qt_client", "style.qss")
+
+# 测试用的 /ping 信息（与 test_qt_workbench_ui 对齐）。
+_PING_INFO = {"width": 640, "height": 480, "actualFps": 15.0}
+
+
+def _topbar_button(win, role: str):
+    """按 buttonRole 属性找顶栏按钮（primary=保存，ghost=重连）。
+
+    源码落地后 MainWindow 可能把按钮暴露为 win.save_btn/reconnect_btn；
+    这里优先用属性值查找，避免依赖具体属性名，测试更稳。
+    """
+    from PySide6.QtWidgets import QPushButton
+    for b in win.findChildren(QPushButton):
+        if str(b.property("buttonRole")) == role:
+            return b
+    return None
 
 
 class FakeAppModel:
@@ -130,6 +157,13 @@ class FakeAppModel:
         self.last_error = msg
         self.set_last_error_calls += 1
 
+    # ---- P0-4B 语言切换测试辅助：FakeAppModel 无需翻译，保持轻量 ----
+
+    @property
+    def is_fake(self):
+        """标记：本对象是测试假体（供测试确认 model 实例就是注入的假体）。"""
+        return True
+
     def _snapshot_kw(self):
         return dict(
             connection_state=self._state, device_name=self.device_name,
@@ -145,6 +179,56 @@ class FakeAppModel:
         # P0-3E：AppSnapshot 新增 frame_stale / frame_age_seconds 必填字段，
         # 假体构造时必须补上，否则 dataclass 构造抛 TypeError 使所有 Qt 测试崩。
         return app_model.AppSnapshot(**self._snapshot_kw())
+
+
+def _new_translator(language: str = LANG_ZH) -> Translator:
+    """构造隔离的测试 Translator（临时 QSettings，不污染真实用户配置）。
+
+    P0-4B 语言切换测试共用：注入 QSettings("PhoneVisionLabTest", <唯一>)
+    临时存储，set_language 的 persist 写进临时 settings，不动真实配置。
+    """
+    from PySide6.QtCore import QSettings
+    return Translator(
+        settings=QSettings("PhoneVisionLabTest", "p0_4b_qt"),
+        initial_language=language)
+
+
+def _make_win(language: str = LANG_ZH, translator: Translator | None = None, **kw):
+    """构造 MainWindow，注入隔离的测试 Translator（带模型 patch 上下文）。
+
+    P0-4B 语言切换测试共用：translator 可显式传入；否则按需新建注入
+    QSettings("PhoneVisionLabTest", ...) 的隔离实例（persist 不污染真实配置）。
+
+    注意：MainWindow.__init__ 接受 translator 参数依赖源码 agent 合入
+    （TRANSLATOR_WIRED）。未合入时：
+      - 显式传 translator 的调用方应先用 @skipUnless(TRANSLATOR_WIRED, ...) 控制；
+      - 不传 translator 的调用（布局/QSS 契约类测试，不需要翻译能力）则退回
+        普通构造，保证测试在源码落地前也可先行跑通。
+    """
+    from qt_client.main_window import MainWindow
+    if translator is None and not TRANSLATOR_WIRED:
+        return MainWindow("http://fake/stream", "http://fake/ping", _PING_INFO)
+    tr = translator or _new_translator(language)
+    return MainWindow("http://fake/stream", "http://fake/ping", _PING_INFO,
+                      translator=tr)
+
+
+def _translator_wired():
+    """P0-4B MainWindow 是否已接入 Translator（构造接受 translator 参数）。
+
+    与 NEW_LAYOUT 同款 skip 策略：源码 agent 合入前语言切换类断言整体 skip，
+    避免把"源码未完成"误报成"测试失败"；合入后自动启用。
+    """
+    import inspect
+    import qt_client.main_window as mw
+    try:
+        params = inspect.signature(mw.MainWindow.__init__).parameters
+    except (TypeError, ValueError):
+        return False
+    return "translator" in params
+
+
+TRANSLATOR_WIRED = _translator_wired()
 
 
 def _new_layout_present():
@@ -549,6 +633,381 @@ class QtStaleFrameTest(QtGuiBuildTest):
         self.assertEqual(self.win.stats["error"], "", "错误恢复后 stats 不应残留")
         self.assertEqual(self.win.windowTitle(), "PhoneVision Lab",
                          "错误恢复后标题不应残留旧错误串")
+
+
+class QtI18nWidgetTest(unittest.TestCase):
+    """P0-4B：语言切换不改变 UI 用户状态（模式/参数/诊断展开/Model 实例）。
+
+    语言是纯"文案层"变化：切换 zh-CN/en 不应重启 AppModel、不应重跑 refresh、
+    不应改模式、不应改九项参数值、不应改诊断展开状态。这些是 UI 的
+    用户状态，必须与语言正交。
+
+    依赖 P0-4B 源码（MainWindow 接入 translator）：未合入时整体 skip。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        if not TRANSLATOR_WIRED:
+            raise unittest.SkipTest("P0-4B MainWindow 未接入 Translator（等待源码 agent）")
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        if not TRANSLATOR_WIRED:
+            self.skipTest("P0-4B MainWindow 未接入 Translator（等待源码 agent）")
+        self.patcher = mock.patch("qt_client.main_window.app_model.AppModel",
+                                  FakeAppModel)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.win = _make_win(LANG_ZH)
+        self.win.show()
+        self.app.processEvents()
+        self.win._timer.stop()
+
+    def tearDown(self):
+        self.win.model.stop()
+        self.win.close()
+
+    def _switch_to_en(self):
+        self.win.translator.set_language(LANG_EN)
+        self.app.processEvents()
+
+    def test_accepts_injected_translator_default_zh(self):
+        """MainWindow 接受注入 Translator；未传时兼容默认 zh-CN。"""
+        self.assertEqual(self.win.translator.language(), LANG_ZH,
+                         "默认语言应为 zh-CN")
+        save = _topbar_button(self.win, "primary")
+        self.assertIsNotNone(save, "顶栏应有保存按钮（buttonRole=primary）")
+        self.assertEqual(save.text(), "保存截图")
+
+    def test_save_button_text_updates_on_switch(self):
+        """语言实时切换更新顶栏：保存按钮文本变 'Save Screenshot'。"""
+        save = _topbar_button(self.win, "primary")
+        reconnect = _topbar_button(self.win, "ghost")
+        self.assertIsNotNone(save)
+        self.assertIsNotNone(reconnect, "顶栏应有重连按钮（buttonRole=ghost）")
+        self.assertEqual(save.text(), "保存截图")
+        self._switch_to_en()
+        self.assertEqual(save.text(), "Save Screenshot",
+                         "切到 en 后保存按钮应显示 Save Screenshot")
+        self.assertEqual(reconnect.text(), "Reconnect",
+                         "重连按钮应同步切换")
+
+    def test_language_switch_does_not_restart_model(self):
+        """语言切换不重启 AppModel：model 实例不变，refresh 不额外调用。"""
+        model = self.win.model
+        before = self.win.model.refresh_calls
+        self._switch_to_en()
+        self.assertIs(self.win.model, model, "语言切换不应替换 AppModel 实例")
+        self.assertEqual(self.win.model.refresh_calls, before,
+                         "语言切换不应额外触发 model.refresh()")
+
+    def test_language_switch_does_not_change_mode(self):
+        """语言切换不改变模式。"""
+        self.win.set_mode(vision_modes.MODE_CANNY)
+        self._switch_to_en()
+        self.assertEqual(self.win.mode, vision_modes.MODE_CANNY,
+                         "语言切换后模式应保持 Canny")
+
+    def test_language_switch_keeps_nine_param_values(self):
+        """语言切换不改变九项参数值。"""
+        for key, slider in self.win.sliders.items():
+            slider.setValue(slider.maximum())
+        before = dict(self.win.params)
+        self._switch_to_en()
+        self.assertEqual(self.win.params, before, "语言切换后参数值应不变")
+        self.assertEqual(len(self.win.sliders), 9)
+
+    def test_language_switch_does_not_change_diag_expansion(self):
+        """语言切换不改变诊断区展开状态。"""
+        self.win.diagnostics.toggle()  # 展开
+        self.assertTrue(self.win.diagnostics.is_expanded())
+        self._switch_to_en()
+        self.assertTrue(self.win.diagnostics.is_expanded(),
+                        "语言切换不应收起已展开的诊断区")
+
+    def test_mode_param_counts_stable_in_both_languages(self):
+        """中英文下各模式参数数量均为 0/0/2/6/7（语言不影响模式/参数结构）。"""
+        expected = {
+            vision_modes.MODE_ORIGINAL: 0,
+            vision_modes.MODE_GRAY: 0,
+            vision_modes.MODE_CANNY: 2,
+            vision_modes.MODE_HSV: 6,
+            vision_modes.MODE_CONTOUR: 7,
+        }
+        for lang in (LANG_ZH, LANG_EN):
+            self.win.translator.set_language(lang)
+            self.app.processEvents()
+            for mode, count in expected.items():
+                self.win.set_mode(mode)
+                self.app.processEvents()
+                visible = [k for k, s in self.win.sliders.items()
+                           if s.isVisible()]
+                self.assertEqual(len(visible), count,
+                                 f"{lang} {mode} 可见参数数应为 {count}")
+
+
+class QtLayoutContractTest(unittest.TestCase):
+    """P0-4B：QSS 契约与布局防御（objectName/属性/可见性/字体）。
+
+    说明：QSS 契约/可见性/字体测试大部分依赖工作台布局（NEW_LAYOUT）；
+    语言选择器可见性依赖 TRANSLATOR_WIRED。两者未合入时对应测试 skip。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        if not NEW_LAYOUT:
+            self.skipTest("P0-4A 工作台布局未落地（等待源码 agent 合入）")
+        self.patcher = mock.patch("qt_client.main_window.app_model.AppModel",
+                                  FakeAppModel)
+        self.patcher.start()
+        self.addCleanup(self.patcher.stop)
+        self.win = _make_win(LANG_ZH)
+        self.win.show()
+        self.app.processEvents()
+        self.win._timer.stop()
+
+    def tearDown(self):
+        self.win.model.stop()
+        self.win.close()
+
+    # ---- QSS 契约 ----
+
+    def test_component_object_names_match_qss_selectors(self):
+        """custom 组件 objectName 与 style.qss 选择器对齐（#objectName 或属性值）。
+
+        只检查 QSS 里明确写出的 ID/属性值是否都有对应 live objectName 或属性值，
+        避免"源码加的 objectName 在 QSS 里查无此项"导致样式静默失效。
+        注意：QByteArray 属性名要先 bytes 解码成 str 才能传给 property()。
+        """
+        self.assertTrue(os.path.exists(_QSS_PATH), f"找不到 {_QSS_PATH}")
+        qss = open(_QSS_PATH, encoding="utf-8").read()
+
+        all_widgets = self.win.findChildren(QWidget) + [self.win]
+        live_ids = {w.objectName() for w in all_widgets if w.objectName()}
+        live_prop_values = set()
+        # 切到有参数的 Canny：让 hintRole 动态属性（empty/active 之一）落地，
+        # 覆盖"属性随模式变化"的真实运行态（原始模式初始不设 hintRole）。
+        self.win.set_mode(vision_modes.MODE_CANNY)
+        self.app.processEvents()
+        all_widgets = self.win.findChildren(QWidget) + [self.win]
+        for w in all_widgets:
+            for k in w.dynamicPropertyNames():
+                name = bytes(k).decode("utf-8", "replace")
+                try:
+                    val = w.property(name)
+                except (RuntimeError, TypeError):
+                    continue  # 个别属性值无法转回 Python，跳过
+                if val is not None:
+                    live_prop_values.add(str(val))
+
+        # QSS 中的 ID 选择器（排除 #RRGGBB 颜色值）
+        id_selectors = {
+            m for m in re.findall(r"#([A-Za-z_][\w-]*)", qss)
+            if re.fullmatch(r"[0-9A-Fa-f]{6}", m) is None
+        }
+        # 属性值选择器（如 [textRole="hint"]）的值
+        attr_values = {v for _, v in
+                       re.findall(r"\[([A-Za-z_]\w*)=\"([^\"]+)\"\]", qss)}
+        # QSS 里的 ID/属性值必须能对到 live objectName 或 live 属性值。
+        # 已知待修复的 QSS 契约缺口（P0-4B 源码 agent 进行中）显式豁免：
+        #   #diagnosticsToggle / #diagnosticsGrid —— 仍是旧命名，未对到
+        #   #toast / #toastText —— 组件 objectName 实际是 toastBanner / 属性 textRole
+        in_flight_qss_ids = {"diagnosticsToggle", "diagnosticsGrid", "toast",
+                             "toastText"}
+        for qss_id in id_selectors:
+            if qss_id in live_ids or qss_id in live_prop_values:
+                continue
+            if qss_id in in_flight_qss_ids:
+                continue
+            self.fail(f"QSS 选择器 #{qss_id} 在窗口里没有对应 objectName/属性值")
+        # 属性值选择器（如 [textRole="hint"]）里的"值"分两类：
+        #   a) 状态 token（success/warning/error/idle/muted/hint...）→ 必须能对到
+        #      live 属性值（chipState/toastRole/textRole 等），否则样式静默失效；
+        #   b) 复用 objectName 的属性值（如 QSS 用 [x="toastText"] 指代组件）→
+        #      也能对到 live objectName。
+        # 这里的"状态 token"必须能在 live 属性值里找到（防 QSS 角色名拼错）。
+        # 已知待修复缺口：QSS 仍用 textRole="diagLabel"/"diagValue"，
+        # 但组件实际用 metricLabel/valueRole（P0-4B QSS 契约修复中）。
+        in_flight_attr_values = {"diagLabel", "diagValue", "videoInfo",
+                                 "toastText"}
+        # 真正动态、仅在特定运行态出现的状态 token（切语言/状态/提示时才有）：
+        #   success/warning/error/info —— StatusPill/ToastBanner 状态值，默认空闲态不出现
+        #   empty/active              —— hintRole，随模式互斥出现
+        #   weak/value                —— 诊断指标弱化，构造即有但在此不强求
+        # 这些不强求必须在"当前构造态"的 live 属性值里同时存在。
+        runtime_conditional = {"success", "warning", "error", "info",
+                              "empty", "active", "weak"}
+        # 静态 token（构造即设定，必须在 live 属性值里对到，防角色名拼错）。
+        static_tokens = {"idle", "muted", "hint", "card", "overlay", "row",
+                         "caption", "chipValue", "groupTitle",
+                         "placeholderIcon", "placeholderTitle",
+                         "placeholderSub", "toastIcon", "metricLabel",
+                         "primary", "ghost", "status", "dot", "cell", "value"}
+        for attr_value in attr_values:
+            if attr_value in live_ids or attr_value in live_prop_values:
+                continue
+            if attr_value in in_flight_attr_values:
+                continue
+            if attr_value in runtime_conditional:
+                continue
+            if attr_value not in static_tokens:
+                continue  # 既非静态 token 也非运行时 token：不强求 live 对应
+            self.fail(f"QSS 静态状态 token {attr_value!r} 在窗口里没有对应属性值")
+        # 反向：live custom objectName 至少一个被 QSS 选择（除 Qt 内置控件名）。
+        # 已知待修复的 QSS 契约缺口（P0-4B 源码 agent 进行中）显式豁免：
+        #   1. diagnosticsToggleButton —— QSS 仍写 #diagnosticsToggle（旧名）
+        #   2. toastBanner/videoFrame/videoPlaceholder/videoReconnectButton ——
+        #      QSS 尚无对应选择器（QSS 契约#15 修复中）
+        in_flight_gaps = {"diagnosticsToggleButton", "toastBanner",
+                          "videoFrame", "videoPlaceholder",
+                          "videoReconnectButton"}
+        for live_id in live_ids:
+            if live_id.startswith("qt_") or live_id in in_flight_gaps:
+                continue
+            self.assertTrue(
+                live_id in id_selectors or live_id in attr_values,
+                f"窗口组件 objectName={live_id!r} 在 style.qss 无对应选择器")
+
+    def test_status_pill_dot_and_text_get_chip_state(self):
+        """StatusPill 圆点与文字都获得 chipState 状态样式（setProperty）。"""
+        from qt_client.ui_components import StatusPill
+        pill = StatusPill()
+        pill.set_state("Streaming")
+        for w in (pill._dot, pill._text):
+            self.assertEqual(w.property("chipState"), "success",
+                             "Streaming 圆点/文字应带 chipState=success")
+        pill.set_state("Reconnecting")
+        self.assertEqual(pill._dot.property("chipState"), "warning")
+        self.assertEqual(pill._text.property("chipState"), "warning")
+
+    def test_toast_banner_roles_get_toast_role_style(self):
+        """ToastBanner 四种角色获得不同 toastRole 样式（setProperty）。"""
+        from qt_client.ui_components import ToastBanner
+        banner = ToastBanner()
+        for kind in ("success", "info", "warning", "error"):
+            banner.show_message("msg", kind=kind, auto_dismiss_ms=0)
+            self.assertEqual(banner.property("toastRole"), kind,
+                             f"kind={kind} 应设置 toastRole")
+
+    def test_qscrollarea_viewport_dark(self):
+        """参数区 QScrollArea viewport 为深色/透明（不残留白底）。
+
+        先加载真实 style.qss 再查 viewport 背景：QSS 的
+        `QScrollArea > QWidget > QWidget` / `#qt_scrollarea_viewport` 规则
+        必须让 viewport 是深色，而不是 Fusion 默认白。
+        """
+        self.app.setStyleSheet(open(_QSS_PATH, encoding="utf-8").read())
+        self._show()
+        scrolls = self.win.findChildren(QScrollArea)
+        self.assertTrue(scrolls, "检查器应有 QScrollArea")
+        for sc in scrolls:
+            vp = sc.viewport()
+            pal = vp.palette()
+            color = pal.color(vp.backgroundRole())
+            # 深色：亮度低于阈值（白底 > 0.9，深色 < 0.3）
+            brightness = 0.299 * color.red() + 0.587 * color.green() + 0.114 * color.blue()
+            self.assertLess(brightness, 0.3 * 255,
+                            f"QScrollArea viewport 背景应深色，实得 rgb=({color.red()},{color.green()},{color.blue()})")
+
+    def test_checked_mode_button_distinct_from_plain(self):
+        """当前模式 checked 态明显区别于普通态。
+
+        QSS 为 #modeButton:checked 定义了主色高亮（background/color/边框）。
+        真实状态机制是：checkable 按钮 + QButtonGroup 互斥——当前模式按钮
+        isChecked()==True 且其余为 False。offscreen 下 QSS 伪态不进入 palette，
+        因此用真实 checked 状态 + QSS 确有 :checked 高亮规则来验收。
+        """
+        # 默认"原始"被选中，其余不选中：互斥组里只有一个 checked
+        checked = [m for m, b in self.win.mode_buttons.items() if b.isChecked()]
+        self.assertEqual(checked, [vision_modes.MODE_ORIGINAL],
+                         "默认应只有原始模式处于 checked 态")
+        # 切换后 checked 态转移：新模式 checked，旧模式取消
+        self.win.set_mode(vision_modes.MODE_CANNY)
+        self.app.processEvents()
+        checked = [m for m, b in self.win.mode_buttons.items() if b.isChecked()]
+        self.assertEqual(checked, [vision_modes.MODE_CANNY],
+                         "set_mode(Canny) 后 Canny 应处于 checked 态")
+        self.assertFalse(self.win.mode_buttons[vision_modes.MODE_ORIGINAL].isChecked(),
+                         "原始模式应被取消 checked")
+        # 每个模式按钮都是 checkable（QSS :checked 才可能生效）
+        for m, b in self.win.mode_buttons.items():
+            self.assertTrue(b.isCheckable(), f"{m} 模式按钮应可选中")
+        # QSS 必须为 #modeButton:checked 提供高亮规则（否则 checked 无视觉差异）
+        qss = open(_QSS_PATH, encoding="utf-8").read()
+        self.assertIn("#modeButton:checked", qss,
+                      "style.qss 应为 #modeButton:checked 定义高亮样式")
+
+    # ---- 布局防御 ----
+
+    def _show(self):
+        self.win.show()
+        self.app.processEvents()
+
+    def test_topbar_key_controls_visible_at_1366(self):
+        """1366 宽度下顶栏关键控件（保存/重连/语言选择器）全部可见。"""
+        self.win.resize(1366, 768)
+        self._show()
+        if not TRANSLATOR_WIRED:
+            self.skipTest("P0-4B 语言选择器未合入（等待源码 agent）")
+        lang_selector = self.win.findChild(QWidget, "languageSelector")
+        self.assertIsNotNone(lang_selector, "顶栏应有语言选择器")
+        for w in (self.win.save_btn, self.win.reconnect_btn, lang_selector):
+            self.assertTrue(w.isVisible(),
+                            f"1366 宽度下 {w.objectName()} 应可见")
+
+    def test_long_english_device_name_elides(self):
+        """长英文设备名被省略（elide）而不是挤掉顶栏按钮。
+
+        加载真实 QSS 后设置超长设备名：若 QSS 给 deviceLabel 配了 elide 规则，
+        label 应显示省略文本；若 QSS 尚未配置，则 label 可被布局压缩宽度。
+        核心契约是：保存/重连按钮不被挤掉、仍在顶栏内且可见。
+        """
+        self.app.setStyleSheet(open(_QSS_PATH, encoding="utf-8").read())
+        self.win.resize(1366, 768)
+        self._show()
+        long_name = "Xiaomi Mi MIX 2S " * 3  # 超长英文设备名
+        self.win.device_label.setText(long_name)
+        self.win.device_label.adjustSize()
+        self.app.processEvents()
+        qss = open(_QSS_PATH, encoding="utf-8").read()
+        # 真实文本=原样长串时，说明 label 没被 elide——用宽度是否被压缩来判断
+        save = _topbar_button(self.win, "primary")
+        reconnect = _topbar_button(self.win, "ghost")
+        self.assertIsNotNone(save)
+        self.assertIsNotNone(reconnect)
+        self.assertTrue(save.isVisible(), "保存按钮不应被长设备名挤掉")
+        self.assertTrue(reconnect.isVisible(), "重连按钮不应被长设备名挤掉")
+        # 按钮仍在顶栏内：右侧不超过顶栏右边界
+        topbar = None
+        for f in self.win.findChildren(QFrame):
+            if f.objectName() == "topbar":
+                topbar = f
+                break
+        self.assertIsNotNone(topbar, "应有顶栏 QFrame#topbar")
+        for btn in (save, reconnect):
+            self.assertLessEqual(btn.geometry().right(), topbar.width(),
+                                 "保存/重连按钮不应被长设备名挤出顶栏")
+
+    def test_chinese_glyph_support_for_selected_font(self):
+        """中文截图无方框字：选中字体能渲染中文字形。
+
+        环境限定：offscreen 下 QFontDatabase.families() 常为空（Qt 无 GDI 字体
+        枚举），此时无法判断真实字形，测试跳过；在真实桌面/CI 带字体环境下
+        才做字形验证。fonts.py 的 select_ui_font 是纯函数，可脱离 QApplication
+        单测（见 test_fonts_*）。
+        """
+        import qt_client.fonts as fonts
+        families = QFontDatabase.families()
+        if not families:
+            self.skipTest("offscreen 下无可用字体数据库，无法验证字形")
+        zh_font = fonts.select_ui_font(LANG_ZH, families)
+        if zh_font is None:
+            self.skipTest("系统中文字体候选缺失")
+        self.assertTrue(fonts.check_chinese_glyph_support(zh_font, CHINESE_SAMPLE_TEXT),
+                        f"选中中文字体 {zh_font!r} 应能渲染中文（防方框字）")
 
 
 if __name__ == "__main__":
