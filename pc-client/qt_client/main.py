@@ -1,18 +1,20 @@
 """
-PhoneVision Lab — PySide6 桌面客户端入口。
+PhoneVision Lab — PySide6 桌面客户端入口（正式默认）。
 
-职责：解析命令行参数（手机 IP/端口或完整流地址）、用 connection 模块做 /ping
-预检、加载 QSS 主题、启动 MainWindow。这是"产品级"客户端的大门。
+职责：解析命令行参数（手机 IP/端口或完整流地址、语言）、用 connection 模块做
+/ping 预检、加载 QSS 主题、初始化 Translator 与全局字体、启动 MainWindow。
+这是"产品级"客户端的大门，也是 root main.py 委托的对象。
 
 为什么这样设计：
-  - URL 构造与 /ping 预检统一走 pc-client/connection.py（与 Tkinter 入口共用），
-    消除双入口的分叉。
+  - URL 构造与 /ping 预检统一走 pc-client/connection.py（与 Legacy Tkinter 入口共用）。
   - 支持 `python -m qt_client.main`（包内相对导入），不依赖从特定子目录启动。
-  - 保留 Tkinter（`python main.py`）为当前默认入口，本阶段不切换。
+  - root `python main.py` 是默认入口，本模块是其委托实现。
+  - 语言解析：--lang 命令行 > QSettings 保存 > 系统 locale；首次启动按系统 locale 选择。
 
-初学者调试观察点：
-  - 启动报"无法连接手机"：看 connection.ping_device 返回的中文提示。
-  - 界面丑/样式不生效：确认 style.qss 存在且编码 utf-8。
+常用命令：
+  python main.py --host 192.168.x.x            # 中文（按系统/保存）
+  python main.py --host 192.168.x.x --lang en  # 英文
+  python -m qt_client.main --host 192.168.x.x --lang zh-CN
 """
 import os
 import sys
@@ -30,17 +32,29 @@ import connection
 from qt_client.main_window import MainWindow
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="PhoneVision Lab 桌面客户端")
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="PhoneVision Lab 桌面客户端（PySide6 工作台）")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--host", help="手机局域网 IP，如 192.168.2.14")
     group.add_argument("--stream-url", help="完整流地址，如 http://192.168.2.14:8080/stream")
     parser.add_argument("--port", type=int, default=8080, help="手机 HTTP 端口（默认 8080）")
-    return parser.parse_args()
+    parser.add_argument("--lang", choices=["zh-CN", "en"], default=None,
+                        help="界面语言：zh-CN 或 en（默认按系统/保存语言）")
+    return parser.parse_args(argv)
 
 
-def main():
-    args = parse_args()
+def _system_language() -> str:
+    """按系统 locale 推断语言：含 zh 前缀 -> zh-CN，否则 en。"""
+    try:
+        import locale
+        loc = locale.getlocale()[0] or locale.getdefaultlocale()[0] or "en_US"
+    except Exception:
+        loc = "en_US"
+    return "zh-CN" if str(loc).lower().startswith("zh") else "en"
+
+
+def main(argv=None):
+    args = parse_args(argv)
     stream_url, ping_url = connection.build_urls(
         host=args.host, port=args.port, stream_url=args.stream_url)
 
@@ -64,7 +78,20 @@ def main():
     except FileNotFoundError:
         print("警告: 找不到 style.qss，使用默认外观。")
 
-    win = MainWindow(stream_url, ping_url, ping_info)
+    # 语言解析：--lang > QSettings 保存 > 系统 locale
+    from qt_client.i18n import Translator
+    tr = Translator(initial_language="zh-CN")
+    saved = tr.language()  # Translator 构造时若 QSettings 有保存值会优先
+    cli = args.lang
+    system = _system_language()
+    lang = tr.resolve_initial_language(cli, saved, system)
+    tr.set_language(lang, persist=False)
+
+    # 全局字体：中文避免方框字
+    from qt_client.fonts import apply_application_font
+    apply_application_font(app, lang)
+
+    win = MainWindow(stream_url, ping_url, ping_info, translator=tr)
     win.show()
     sys.exit(app.exec())
 
