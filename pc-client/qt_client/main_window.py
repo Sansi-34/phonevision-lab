@@ -17,11 +17,14 @@ PhoneVision Lab — PySide6 主窗口（产品级客户端核心）。
   - 滑块没效果：确认当前模式匹配（Canny 滑块只影响 Canny 模式）。
   - 处理慢：看"显示FPS"明显低于"接收FPS"。
 """
+import logging
 import os
 import sys
 import threading
 import time
 from datetime import datetime
+
+import numpy as np
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap
@@ -372,10 +375,11 @@ class MainWindow(QMainWindow):
 
     def _refresh(self):
         try:
-            self.model.refresh()  # 汇总统计 + /ping 轮询 + 丢帧估算
+            self.model.refresh()  # 汇总统计（不含网络请求；/ping 由后台 worker 负责）
             self._update_frame()
             self._update_metrics()
         except Exception as e:  # noqa: BLE001 - UI 刷新不能崩
+            logging.exception("PySide6 刷新异常")
             self.stats["error"] = str(e)
 
     def _update_frame(self):

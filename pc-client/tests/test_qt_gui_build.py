@@ -113,6 +113,44 @@ class QtGuiBuildTest(unittest.TestCase):
         self.win.set_mode(vision_modes.MODE_CANNY)
         self.assertEqual(self.win.mode, vision_modes.MODE_CANNY)
 
+    def test_placeholder_no_frame_does_not_raise(self):
+        """回归：无帧占位分支不再抛 NameError。
+
+        背景：历史 bug 中该分支用 np.zeros 但未 import numpy，_update_frame()
+        进入占位分支时抛 `name 'np' is not defined`。注意必须直接调用
+        _update_frame() 而不是 _refresh()——后者会把异常吞进 stats["error"]，
+        掩盖问题。FakeAppModel.get_latest_frame() 返回 (None, None)，必然走占位分支。
+        """
+        self.win._timer.stop()  # 停掉 33ms 刷新定时器，保证离线确定性
+        # 若 np 未导入，np.zeros 在这里直接抛 NameError，本条即失败
+        self.win._update_frame()
+
+    def test_placeholder_pixmap_rendered(self):
+        """占位画面成功渲染：_update_frame() 后画面区有 QPixmap。
+
+        若占位分支提前 return 或 _show_frame 未执行，pixmap() 会为 None。
+        """
+        self.win._timer.stop()
+        self.win.show()
+        self.app.processEvents()  # 触发布局，让 video_view 拿到真实尺寸
+        self.win._update_frame()
+        self.assertIsNotNone(self.win.video_view.pixmap())
+        self.assertIsNotNone(self.win._qimg)  # _show_frame 已把占位图转为 QImage
+
+    def test_placeholder_no_nameerror_in_ui(self):
+        """错误信息不泄漏 'name 'np' is not defined'。
+
+        修复后 np 可用，stats["error"] 保持为空、标题不变；若回归，_refresh()
+        的兜底会把 NameError 写进 stats["error"]，标题栏也会带上错误串。
+        """
+        self.win._timer.stop()
+        self.win._update_frame()
+        self.assertNotIn("name 'np' is not defined", self.win.windowTitle())
+        self.assertNotIn("name 'np' is not defined", self.win.stats["error"])
+        # 状态一致性：快照为 Idle，占位文字走"等待画面... 状态: Idle"分支，
+        # 统计应同步为 Idle（间接证明走了占位分支而非异常分支）
+        self.assertEqual(self.win.stats["state"], "Idle")
+
 
 if __name__ == "__main__":
     unittest.main()
