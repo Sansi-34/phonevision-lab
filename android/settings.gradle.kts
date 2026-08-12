@@ -4,13 +4,16 @@
 // 为什么这样设计：Android Gradle 插件(AGP) 与 Kotlin 插件的版本只要在 settings 里出现一次，
 // 根 build.gradle.kts 用 apply false 只声明不应用，避免多模块重复写版本号。
 //
-// 初学者调试观察点：依赖下载失败时，看这里声明的插件版本与 build.gradle 的 jcenter() 是否匹配；
+// 初学者调试观察点：依赖下载失败时，看这里声明的插件版本与 build.gradle 的仓库是否匹配；
 // 升级 AGP / Kotlin 版本时，只需要改这里，不用到处改。
+//
+// 仓库源（P0-5B 变更）：
+//   默认只使用官方仓库 google() / mavenCentral() / gradlePluginPortal()，保证 GitHub 开源后
+//   的构建可复现与可校验。国内网络若下载慢，可在 RELEASE.md 中按用户自行配置镜像仓库；
+//   此处不作为默认源，也不进 CI。
 
 pluginManagement {
     repositories {
-        // 腾讯云 maven-public 镜像：聚合 google + central，国内访问快
-        maven(url = "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -20,8 +23,6 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // 腾讯云 maven-public 镜像优先，加速依赖下载
-        maven(url = "https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
         google()
         mavenCentral()
     }

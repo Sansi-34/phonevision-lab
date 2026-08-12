@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 自适应启动图标 (API 26+)，圆角形态。
+
+  与 ic_launcher.xml 相同内容；roundIcon 复用同一套自适应图层。
+  API 21-25 的回退图由各密度 mipmap-*/ic_launcher_round.png 提供。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

@@ -10,7 +10,7 @@
 // 初学者调试观察点：
 //   - "SDK location not found" -> 说明本机没装 Android SDK，见 README 的安装步骤。
 //   - "Unsupported class file major version" -> Java/JDK 版本不对，检查是否已设置到 17。
-//   - "Could not find org.nanohttpd" -> 依赖仓库配置错误，检查 settings.gradle.kts 的 repositories。
+//   - "Could not find org.nanohttpd" -> 依赖下载失败，检查网络或按 RELEASE.md 配置镜像仓库。
 
 plugins {
     id("com.android.application")
@@ -26,9 +26,40 @@ android {
         minSdk = 21
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.0-alpha.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // P0-5B：正式签名接口 —— 密钥一律走环境变量，绝不写进源码 / 日志。
+    // 四个环境变量同时存在才启用 release 签名；缺任何一个都构建 unsigned 并明确提示。
+    //   PVL_ANDROID_KEYSTORE          keystore 文件路径
+    //   PVL_ANDROID_KEY_ALIAS         密钥别名
+    //   PVL_ANDROID_STORE_PASSWORD    store 密码
+    //   PVL_ANDROID_KEY_PASSWORD      key 密码
+    val signEnabled = listOf(
+        "PVL_ANDROID_KEYSTORE",
+        "PVL_ANDROID_KEY_ALIAS",
+        "PVL_ANDROID_STORE_PASSWORD",
+        "PVL_ANDROID_KEY_PASSWORD"
+    ).all { !System.getenv(it).isNullOrBlank() }
+
+    if (signEnabled) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(System.getenv("PVL_ANDROID_KEYSTORE"))
+                storePassword = System.getenv("PVL_ANDROID_STORE_PASSWORD")
+                keyAlias = System.getenv("PVL_ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("PVL_ANDROID_KEY_PASSWORD")
+            }
+        }
+        logger.lifecycle("PhoneVisionLab: release signing ENABLED (via PVL_ANDROID_* env vars).")
+    } else {
+        logger.lifecycle(
+            "PhoneVisionLab: release signing DISABLED — build will be UNSIGNED. " +
+                "Set all of PVL_ANDROID_KEYSTORE / PVL_ANDROID_KEY_ALIAS / " +
+                "PVL_ANDROID_STORE_PASSWORD / PVL_ANDROID_KEY_PASSWORD to enable."
+        )
     }
 
     buildTypes {
@@ -38,6 +69,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (signEnabled) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

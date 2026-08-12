@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 应用颜色资源。
+
+  P0-5B：定义临时品牌色（深色底 + 靛蓝主色），供启动图标背景层等资源引用。
+  这是 P0-5B 引入的唯一资源；现有主题仍走 MaterialComponents 默认配色。
+-->
+<resources>
+    <!-- 品牌主色：靛蓝 #5B7CFA（与原 P0-5A 临时图标方向一致，无文字） -->
+    <color name="brand_indigo">#5B7CFA</color>
+    <!-- 品牌底色：深靛蓝，用于启动图标背景与旧机型回退底 -->
+    <color name="brand_dark">#222C60</color>
+</resources>

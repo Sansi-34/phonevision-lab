@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 自适应启动图标 (API 26+)。
+
+  P0-5B：临时品牌图标（深色底 + 靛蓝 #5B7CFA 手机与镜头线稿，无文字）。
+  使用自适应图标规范：背景为纯色 drawable，前景为带安全边距的线稿，
+  由系统负责圆角 / 遮罩 / 缩放，任何形态都不会被裁掉。
+  API 21-25 的回退图由各密度 mipmap-*/ic_launcher(.round).png 提供。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
