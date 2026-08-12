@@ -1,0 +1,247 @@
+/* ============================================================
+   PhoneVision Lab — 深色产品级主题 (PySide6 QSS)
+   加载：app.setStyleSheet(Path("style.qss").read_text(encoding="utf-8"))
+   设计要点：
+     - 层级靠"亮度 + 留白"，不用重边框
+     - 品牌色(靛蓝 #5B7CFA)只出现在：选中模式按钮 / 主按钮 / 已滑过轨道
+     - 功能色(绿/琥珀/红)只表达状态
+   ============================================================ */
+
+/* ---------- 基础 ---------- */
+QMainWindow {
+    background-color: #0E1116;
+    color: #E6EAF2;
+}
+QWidget {
+    font-family: "Segoe UI", "Microsoft YaHei UI";
+    font-size: 9pt;
+    color: #E6EAF2;
+    /* 注意：不写 background，QLabel 等默认透明，透出父级背景 */
+}
+
+/* ---------- 容器面板 ---------- */
+QFrame#sidebar {
+    background-color: #10141D;
+    border: 1px solid #232A39;
+    border-radius: 14px;
+}
+QFrame#metricsBar {
+    background-color: #10141D;
+    border: 1px solid #232A39;
+    border-radius: 14px;
+}
+
+/* ---------- 卡片 ---------- */
+QFrame[cardRole="card"] {
+    background-color: #161B26;
+    border: 1px solid #232A39;
+    border-radius: 12px;
+}
+QFrame[cardRole="card"]:hover { border-color: #2A3140; }
+
+/* 视频画面区 */
+QLabel#videoView {
+    background-color: #000000;
+    border: 1px solid #232A39;
+    border-radius: 12px;
+}
+
+/* ---------- 文本 ---------- */
+QLabel[textRole="groupTitle"] {
+    color: #E6EAF2;
+    font-size: 9.5pt;
+    font-weight: 600;
+}
+QLabel[textRole="caption"] {
+    color: #5C6470;
+    font-size: 8pt;
+}
+QLabel[textRole="hint"] {
+    color: #4A5260;
+    font-size: 8pt;
+}
+
+/* ---------- 通用按钮（四态齐全） ---------- */
+QPushButton {
+    background-color: #1A2029;
+    color: #D7DDEA;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-weight: 500;
+}
+QPushButton:hover  { background-color: #232B3A; }
+QPushButton:pressed { background-color: #2A3140; }
+QPushButton:disabled {
+    color: #5C6470;
+    background-color: #141924;
+}
+
+/* 品牌主按钮 */
+QPushButton[buttonRole="primary"] {
+    background-color: #5B7CFA;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+QPushButton[buttonRole="primary"]:hover  { background-color: #7B95FF; }
+QPushButton[buttonRole="primary"]:pressed { background-color: #4657D6; }
+QPushButton[buttonRole="primary"]:disabled {
+    background-color: rgba(91, 124, 250, 0.20);
+    color: rgba(230, 234, 242, 0.45);
+}
+
+/* 幽灵/次按钮 */
+QPushButton[buttonRole="ghost"] {
+    background-color: transparent;
+    color: #9AA3B2;
+    border: 1px solid #2A3140;
+}
+QPushButton[buttonRole="ghost"]:hover {
+    background-color: #1B2131;
+    border-color: #35405A;
+    color: #E6EAF2;
+}
+QPushButton[buttonRole="ghost"]:pressed { background-color: #232B3A; }
+QPushButton[buttonRole="ghost"]:disabled {
+    color: #5C6470;
+    border-color: #1E2430;
+    background-color: transparent;
+}
+
+/* 危险按钮（退出：淡红底 + 红字，克制不刺眼） */
+QPushButton[buttonRole="danger"] {
+    background-color: rgba(242, 100, 95, 0.12);
+    color: #F27E78;
+    border: 1px solid rgba(242, 100, 95, 0.35);
+}
+QPushButton[buttonRole="danger"]:hover {
+    background-color: rgba(242, 100, 95, 0.22);
+    color: #FF9A94;
+    border-color: rgba(242, 100, 95, 0.50);
+}
+QPushButton[buttonRole="danger"]:pressed {
+    background-color: rgba(242, 100, 95, 0.30);
+}
+
+/* ---------- 模式按钮（checkable，:checked 变主色） ---------- */
+QPushButton[buttonRole="mode"] {
+    background-color: #1A2029;
+    color: #9AA3B2;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 0;
+    font-weight: 500;
+}
+QPushButton[buttonRole="mode"]:hover {
+    background-color: #232B3A;
+    color: #E6EAF2;
+}
+QPushButton[buttonRole="mode"]:checked {
+    background-color: #5B7CFA;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+QPushButton[buttonRole="mode"]:checked:hover { background-color: #7B95FF; }
+QPushButton[buttonRole="mode"]:pressed { background-color: #4657D6; }
+
+/* ---------- 滑块 QSlider（Windows 完整可用写法） ---------- */
+QSlider { min-height: 24px; }
+
+QSlider::groove:horizontal {
+    height: 4px;
+    background: #232A38;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background: #5B7CFA;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal:hover { background: #7B95FF; }
+QSlider::add-page:horizontal {
+    background: #232A38;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    background: #E6EAF2;
+    border-radius: 7px;
+}
+QSlider::handle:horizontal:hover   { background: #FFFFFF; }
+QSlider::handle:horizontal:pressed { background: #5B7CFA; }
+
+/* ---------- 指标块（小标签 + 大等宽数值） ---------- */
+QFrame[cardRole="chip"] {
+    background-color: #1B2131;
+    border: 1px solid #232A39;
+    border-radius: 10px;
+}
+QLabel[textRole="chipLabel"] {
+    color: #5C6470;
+    font-size: 8pt;
+}
+QLabel[textRole="chipValue"] {
+    color: #E6EAF2;
+    font-family: "Consolas";
+    font-size: 11pt;
+    font-weight: 600;
+}
+
+/* ---------- 状态指示（动态 property 切换） ---------- */
+QLabel[textRole="chipValue"][chipState="success"]  { color: #3DD68C; }
+QLabel[textRole="chipValue"][chipState="warning"]  { color: #F5A524; }
+QLabel[textRole="chipValue"][chipState="error"]    { color: #F2645F; }
+QLabel[textRole="chipValue"][chipState="idle"]     { color: #5C6470; }
+
+/* 状态圆点 */
+QLabel[statusRole="dot"] {
+    min-width: 8px;
+    max-width: 8px;
+    min-height: 8px;
+    max-height: 8px;
+    border-radius: 4px;
+    background-color: #5C6470;
+}
+QLabel[statusRole="dot"][chipState="success"] { background-color: #3DD68C; }
+QLabel[statusRole="dot"][chipState="warning"] { background-color: #F5A524; }
+QLabel[statusRole="dot"][chipState="error"]   { background-color: #F2645F; }
+
+/* ---------- 滚动条 ---------- */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical {
+    background: #3A4457;
+    border-radius: 3px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover { background: #4A5468; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical,  QScrollBar::sub-page:vertical  { background: transparent; }
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal {
+    background: #3A4457;
+    border-radius: 3px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover { background: #4A5468; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+QScrollBar::add-page:horizontal,  QScrollBar::sub-page:horizontal  { background: transparent; }
+
+/* ---------- Tooltip ---------- */
+QToolTip {
+    background-color: #1B2131;
+    color: #E6EAF2;
+    border: 1px solid #2A3140;
+    padding: 4px 8px;
+    border-radius: 6px;
+}

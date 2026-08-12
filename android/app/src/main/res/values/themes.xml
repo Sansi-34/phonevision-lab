@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 应用主题。
+  职责：为 AppCompatActivity 提供兼容 Material 主题。
+  为什么这样设计：AppCompatActivity 需要继承 AppCompat/MaterialComponents 的主题，
+  不能直接使用 @android:style/Theme.Material.*（两者不兼容）。
+  Theme.MaterialComponents.DayNight.NoActionBar 满足要求且跨 API 21 稳定。
+  初学者调试观察点：若主题用错（如纯 Material），启动会崩溃或异常，
+  报错多与 AppCompat 主题检查相关，先检查这里。
+-->
+<resources>
+    <style name="Theme.PhoneVisionLab" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>

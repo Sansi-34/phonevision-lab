@@ -1,0 +1,59 @@
+# ============================================================
+# PhoneVision Lab — .gitignore
+# 先忽略、后整理：这些文件/目录不进入版本控制
+# ============================================================
+
+# ---------- Operating system / IDE ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# ---------- Local AI/editor state ----------
+.claude/
+
+# ---------- Android local/build files ----------
+**/local.properties
+**/.gradle/
+**/build/
+**/.cxx/
+*.apk
+*.aab
+
+# ---------- Python ----------
+**/__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---------- Runtime output ----------
+**/captures/
+*.log
+*logcat*.txt
+
+# ---------- Large validation artifacts ----------
+*.mjpeg
+/android/v0-a*.png
+/android/v0-a*.jpg
+/android/v0-a*.json
+
+# ---------- Downloaded archives and installers ----------
+/*.zip
+*.exe
+*.msi
+
+# ---------- Secrets and local settings ----------
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.pem
+*.key

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 应用清单
+  职责：声明权限、唯一入口 Activity、应用主题。
+  为什么这样设计：
+    - CAMERA 权限在运行时申请（MainActivity 处理），其余为普通权限自动授予。
+    - INTERNET + WIFI 状态权限：NanoHTTPD 监听 0.0.0.0 需要联网权限；读取本机 IP 需要网络状态。
+    - 使用自定义主题 Theme.PhoneVisionLab（继承 MaterialComponents），
+      兼容 AppCompatActivity，避免 @android:style/Theme.Material.* 的不兼容。
+  初学者调试观察点：漏了某个权限时，App 可能直接崩溃或接口不可用；先检查这里。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 摄像头权限：运行时申请，见 MainActivity -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- HTTP 服务 + 访问局域网需要 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PhoneVisionLab">
+
+        <!-- 入口 Activity；锁定竖屏，避免旋转时重建会话把推流打断 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PhoneVisionLab">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

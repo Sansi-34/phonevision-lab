@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PhoneVision Lab — 主界面布局
+  职责：展示摄像头预览 + 推流状态信息 + 开始/停止按钮。
+  为什么这样设计：
+    - 顶部用 TextureView 承载 Camera2 的预览 Surface；下方是状态区，方便直接看到 IP/地址/FPS/错误。
+    - 没有用 RecyclerView/复杂控件，V0-A 保持简单可读。
+  初学者调试观察点：预览黑屏看 CameraController 是否正确 attach；状态区报错直接看错误文本。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- 预览 -->
+    <TextureView
+        android:id="@+id/previewTexture"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- 状态区 -->
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="monospace"
+        android:lineSpacingExtra="3dp"
+        android:textSize="13sp"
+        android:text="正在初始化…" />
+
+    <!-- 推流控制按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="开始推流" />
+
+        <Button
+            android:id="@+id/stopButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="停止推流" />
+    </LinearLayout>
+
+</LinearLayout>
