@@ -1,0 +1,69 @@
+# PhoneVision Lab — Android 发布候选（unsigned）手动构建工作流
+#
+# 用途：仅在手动触发时构建 Android 候选产物：
+#   - debug APK（可安装测试版，明确标注 debug）
+#   - unsigned release APK
+#   - unsigned AAB
+#   - SHA-256 清单 + android-build-info.json
+# 设计约束：
+#   - 只在 workflow_dispatch 触发。
+#   - 未提供签名环境变量（PVL_ANDROID_*）时，release 产物为 unsigned，
+#     明确标注不可作为正式 release / 不可上传商店 / 不可向普通用户分发。
+#   - 不创建 GitHub Release、不自动上传到 Play 或任何分发渠道。
+# 安全约定：
+#   - 顶层 permissions: contents: read。
+#   - 所有外部 Action 固定完整 40 位 commit SHA，并用 # vX.Y.Z 注释版本。
+#   - 本工作流不读取任何 secret（签名密钥由未来 CI 通过环境变量注入）。
+name: Android release candidate (unsigned)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-candidate
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    name: Build debug + unsigned release candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Gradle (basic cache)
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        with:
+          cache-provider: basic
+
+      - name: Build candidates (debug + unsigned release APK/AAB)
+        working-directory: android
+        run: |
+          # 未提供签名环境变量 → 构建 unsigned 候选
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+
+      - name: Run release candidate packaging script
+        working-directory: android
+        run: powershell -ExecutionPolicy Bypass -File scripts/build_release_candidate.ps1
+
+      - name: Upload Android candidates artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: PhoneVisionLab-0.1.0-alpha.1-android-candidates
+          path: artifacts/android/*
+          if-no-files-found: error
+          retention-days: 7

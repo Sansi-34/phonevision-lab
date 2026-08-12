@@ -1,0 +1,55 @@
+# PhoneVision Lab — Windows x64 便携包手动构建工作流
+#
+# 用途：仅在手动触发时（workflow_dispatch）在 windows-latest 上调用现有
+#   pc-client/scripts/build_windows.ps1，产出 ZIP + SHA-256 并上传为 artifact。
+# 设计约束：
+#   - 只在 workflow_dispatch 触发，绝不在普通 PR 上自动打 ~107MB 包。
+#   - 打包脚本在干净的 .venv-build 内运行全量测试（默认），PyInstaller 打
+#     onedir windowed 包，写 build-info.json（无本机路径/用户名），生成 ZIP
+#     与 SHA-256。
+#   - 本工作流不创建 GitHub Release、不使用任何 secret（产物仅供人工下载验证）。
+# 安全约定：
+#   - 顶层 permissions: contents: read（最小权限）。
+#   - 所有外部 Action 固定完整 40 位 commit SHA，并用 # vX.Y.Z 注释版本。
+#   - 工作流内不含本机路径/用户名。
+name: Windows portable package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-package
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build Windows x64 portable ZIP
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Run Windows portable build (full tests + PyInstaller + ZIP + SHA-256)
+        working-directory: pc-client
+        run: powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+
+      - name: Upload portable package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: PhoneVisionLab-${{ github.ref_name }}-windows-x64
+          path: |
+            artifacts/windows/*.zip
+            artifacts/windows/*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7

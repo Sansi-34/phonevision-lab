@@ -1,0 +1,23 @@
+# PhoneVision Lab — Dependabot 依赖更新配置
+#
+# 覆盖 GitHub Actions / pip (Python) / gradle (Android) 三类依赖源。
+# 每周检查一次，每类限制最多 5 个开放 PR，避免刷屏。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: pip
+    directory: /pc-client
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
