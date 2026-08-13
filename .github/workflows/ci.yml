@@ -146,7 +146,16 @@ jobs:
       - name: No local path / username leaks in tracked source
         run: |
           set -euo pipefail
-          FOUND=$(git grep -nE 'D:\\\\|C:\\\\Users|22917|Sansi' -- '*.py' '*.ps1' '*.kts' '*.gradle' '*.spec' '*.yml' '*.yaml' || true)
+          # 排除项：
+          #   1. 本步自身（grep 模式里的盘符反斜杠字面量 / 本机用户名）。
+          #   2. 测试文件（tests/ 里的防泄漏断言自身含本机用户名字面量，
+          #      以及 test_mjpeg_reader.py 的样例路径——均属"检查泄漏的命令"，不是泄漏）。
+          #   3. android/scripts/build_release_candidate.ps1 的 JAVA_HOME 提示文案
+          #      （C: 反斜杠 Users 示例，非真实路径）。
+          FOUND=$(git grep -nE 'D:\\\\|C:\\\\Users|22917|Sansi' -- '*.py' '*.ps1' '*.kts' '*.gradle' '*.spec' '*.yml' '*.yaml' \
+            | grep -vE '^\.github/workflows/ci\.yml:.*git grep' \
+            | grep -vE '^pc-client/tests/' \
+            | grep -v '^android/scripts/build_release_candidate.ps1:.*JAVA_HOME' || true)
           if [ -n "$FOUND" ]; then
             echo "::error::检测到本机路径/用户名泄漏"
             echo "$FOUND"

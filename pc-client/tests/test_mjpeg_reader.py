@@ -31,8 +31,13 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import mjpeg_reader  # noqa: E402
 
-# 真实 MJPEG 样本：约 80 个 part，最后一 part 因 curl 超时截断不完整
-SAMPLE_PATH = r"D:\PhoneVision Lab\android\v0-a4-stream-sample.mjpeg"
+# 真实 MJPEG 样本：约 80 个 part，最后一 part 因 curl 超时截断不完整。
+# 样本未纳入 Git（被 .gitignore 忽略，仅本机存在），测试读取时用相对仓库根路径。
+_SAMPLE_REL = os.path.join("android", "v0-a4-stream-sample.mjpeg")
+SAMPLE_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    _SAMPLE_REL,
+)
 
 BOUNDARY = "phonevision-boundary"
 CONTENT_TYPE = "multipart/x-mixed-replace;boundary=%s" % BOUNDARY
