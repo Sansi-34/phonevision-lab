@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     PhoneVision Lab Web — Windows x64 便携包构建脚本（PyInstaller onedir + ZIP）。
 
@@ -61,7 +61,9 @@ Write-Host "  venv       : $BuildVenv"
 # ------------------------------------------------------------------
 # 1. 环境检查
 # ------------------------------------------------------------------
-if ($IsMacOS -or $IsLinux) { throw "此脚本只支持 Windows。" }
+if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
+    throw "此脚本只支持 Windows。"
+}
 if ($PSVersionTable.PSVersion.Major -lt 5) { throw "需要 PowerShell 5.1+。" }
 if (-not (Test-Path $VersionPy)) { throw "找不到 version.py：$VersionPy" }
 if (-not (Test-Path $SpecFile)) { throw "找不到 spec：$SpecFile" }

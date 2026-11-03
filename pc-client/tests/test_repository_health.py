@@ -187,5 +187,40 @@ class BilingualConsistencyTest(unittest.TestCase):
             self.assertIn(kw, zh, f"README.zh-CN.md 缺警告: {kw!r}")
 
 
+class PowerShellEncodingTest(unittest.TestCase):
+    """含非 ASCII 的 .ps1 必须带 UTF-8 BOM。
+
+    为什么：Windows PowerShell 5.1（Windows 10/11 自带的 powershell.exe）在没有
+    BOM 时按系统 ANSI 代码页读取脚本。脚本里的中文注释/提示会被解成乱码，
+    引号与字符串边界随之错位，最终以 "Unexpected token" 语法错误整体失败
+    （web/scripts/build_windows.ps1 就是这样：源码模式跑得好好的，打包脚本直接崩）。
+    PowerShell 7 默认 UTF-8，不受影响，但用户机器上通常是 5.1。
+    """
+
+    _SKIP_DIRS = {
+        ".git", ".venv", ".venv-build", ".venv-train", ".venv-web-build",
+        "build", "dist", "node_modules", ".local", "artifacts", "__pycache__",
+    }
+
+    def test_non_ascii_scripts_have_utf8_bom(self):
+        offenders = []
+        for dirpath, dirnames, filenames in os.walk(_REPO):
+            dirnames[:] = [d for d in dirnames if d not in self._SKIP_DIRS]
+            for name in filenames:
+                if not name.lower().endswith(".ps1"):
+                    continue
+                path = os.path.join(dirpath, name)
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                has_bom = data.startswith(b"\xef\xbb\xbf")
+                has_non_ascii = any(byte > 127 for byte in data)
+                if has_non_ascii and not has_bom:
+                    offenders.append(os.path.relpath(path, _REPO))
+        self.assertEqual(
+            [], offenders,
+            "以下 .ps1 含非 ASCII 但没有 UTF-8 BOM，Windows PowerShell 5.1 会解析失败："
+            + ", ".join(offenders))
+
+
 if __name__ == "__main__":
     unittest.main()

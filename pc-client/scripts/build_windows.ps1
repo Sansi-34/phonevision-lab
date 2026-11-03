@@ -58,7 +58,9 @@ Write-Host "  config     : $Config"
 # ------------------------------------------------------------------
 # 1. 环境检查
 # ------------------------------------------------------------------
-if ($IsMacOS -or $IsLinux) {
+# Windows PowerShell 5.1 没有 $IsWindows/$IsMacOS/$IsLinux 自动变量（PS7 才有），
+# 直接引用会抛 "The variable '$IsMacOS' cannot be retrieved"。用平台 API 判断。
+if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw "此脚本只支持 Windows。"
 }
 if ($PSVersionTable.PSVersion.Major -lt 5) {
