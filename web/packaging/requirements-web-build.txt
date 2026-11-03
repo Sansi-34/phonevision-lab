@@ -1,0 +1,15 @@
+# PhoneVision Lab Web — 构建期依赖（Windows 便携包）
+#
+# 与 pc-client/packaging/requirements-build.txt 的关键差异：
+#   - 不含 PySide6（网页后端不依赖 Qt，体积小一半以上）；
+#   - 不含 TensorFlow（训练依赖由用户按需安装，不打进便携包）；
+#   - opencv/numpy/requests 是网页服务的运行时必需项。
+#
+# pyinstaller 用于打包；pillow 由 pc-client 的数据集/导出链路使用（pvl_split
+# 的图片可解码性抽查、pvl_export 的一致性校验都依赖它）。
+
+opencv-python
+numpy
+requests
+pillow
+pyinstaller>=6.0
