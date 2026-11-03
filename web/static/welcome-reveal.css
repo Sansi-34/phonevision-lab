@@ -1,0 +1,47 @@
+/*
+ * 宣传页的"滚动浮现"动效。
+ *
+ * 为什么单独一个文件：welcome.css 是压缩过的历史产物（6 行、11KB、没有源文件），
+ * 往里面塞规则会越改越不敢动。这里只放动效相关的规则，沿用页面原有的设计令牌。
+ *
+ * 关键约定：只有 <html> 上有 .js-reveal 时才隐藏元素。
+ *   - .js-reveal 由 head 里的一小段内联脚本在首次绘制前加上；
+ *   - 脚本不存在 / 浏览器不支持 IntersectionObserver / 用户开启"减少动效"时，
+ *     类名不会加上，所有文字默认可见 —— 动效永远不能成为"看不到内容"的原因。
+ */
+
+.js-reveal [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+  transition:
+    opacity .65s cubic-bezier(.22, .61, .36, 1),
+    transform .65s cubic-bezier(.22, .61, .36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js-reveal [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* 已经浮现过的元素不再参与合成层，长页面滚动更省电 */
+.js-reveal [data-reveal].is-visible {
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 打印/导出 PDF 时不能留下半透明的段落 */
+@media print {
+  .js-reveal [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
