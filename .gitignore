@@ -12,6 +12,8 @@ Thumbs.db
 
 # ---------- Local AI/editor state ----------
 .claude/
+.local/
+/materials/
 
 # ---------- Android local/build files ----------
 **/local.properties
@@ -27,6 +29,7 @@ Thumbs.db
 *.pyo
 .venv/
 .venv-build/
+.venv-train/
 venv/
 env/
 .pytest_cache/
@@ -34,13 +37,41 @@ env/
 .coverage
 htmlcov/
 
-# ---------- Runtime output ----------
+# ---------- 本机工具链配置（含本机绝对路径，绝不进版本控制） ----------
+# .local/environment.ps1 记录 JDK/Android SDK/Python 的本机路径。
+# 新机器按 docs/local-setup.zh-CN.md 重新生成；模板见 .local/environment.example.ps1。
+.local/
+!.local/environment.example.ps1
+
+# ---------- 用户数据目录（数据集/训练产物/模型包/性能导出） ----------
+# 这些由程序在运行时写到 %LOCALAPPDATA%/PhoneVisionLab，绝不进入版本控制。
+# 若开发者用 PVL_DATA_DIR 指到仓库内，也一并忽略。
+**/datasets/
+**/runs/
+**/exports/
+*.pvlmodel.zip
+*.keras
+# 本地演示产物（scripts/make_demo_artifacts.py 生成，含大文件）
+artifacts/
+
+# ---------- 控制器固件本地配置（Wi-Fi 凭据等） ----------
+controller-firmware/**/secrets.h
+controller-firmware/**/config.local.h
+
+# ---------- 运行时输出 ----------
 **/captures/
 *.log
 *logcat*.txt
 artifacts/
 **/dist/
 **/build/
+# web 打包产物（与 pc-client 的 build/dist 同性质）
+/web/build/
+/web/dist/
+
+# ---------- 工具工作目录（AI/审查工具的中间产物，绝不进版本控制） ----------
+.hallmark/
+/output/
 
 # ---------- Large validation artifacts ----------
 *.mjpeg

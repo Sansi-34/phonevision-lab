@@ -89,6 +89,32 @@ jobs:
           python legacy_main.py --help
           python -m qt_client.main --help
 
+  web-tests:
+    name: Web platform tests (Py3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pc-client dependencies
+        working-directory: pc-client
+        run: |
+          python -m pip install --disable-pip-version-check --upgrade pip
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      # web/server 直接 import pc-client 的 pvl_* 模块与 connection，因此测试必须在
+      # 仓库根目录下跑，并让 PC_CLIENT 目录进入 sys.path（web/tests 自己处理）。
+      - name: Run web tests
+        run: python -m unittest discover -s web/tests -t web -v
+
   android-build:
     name: Android build (JDK17)
     runs-on: ubuntu-latest

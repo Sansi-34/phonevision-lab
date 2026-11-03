@@ -32,6 +32,14 @@ as P0-5x).
 
 - [ ] Full PC suite passes offscreen:
       `QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t tests`
+      — record the `TOTAL / PASS / FAIL / ERROR / SKIP` line, not just "green"
+- [ ] The TensorFlow-gated export tests actually run (not skipped): install
+      `requirements-train.txt` in a separate venv and execute
+      `python -m unittest tests.test_pvl_export`. The export consistency gate is
+      the only thing standing between a bad model and a phone, so "skipped" is
+      not "passed"
+- [ ] Web platform tests pass: `python -m unittest discover -s web/tests -t web`
+      (includes the cross-origin / path-whitelist security cases)
 - [ ] `git diff --check` is clean
 - [ ] Android builds when Android was touched: `cmd //c gradlew.bat assembleDebug`
       (JDK 17 + Android SDK on PATH)
