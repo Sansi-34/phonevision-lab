@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>学习首页 · PhoneVision Lab</title>
+  <meta name="description" content="用一部旧安卓手机学习计算机视觉：从认识图像、局域网采集，到训练模型与手机端推理的动手学习路径。">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/page-home.css">
+  <script defer src="assets/js/site.js"></script>
+</head>
+<body data-page="home">
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<header class="nav">
+  <div class="nav__inner">
+    <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+      <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+        <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+        <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+        <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+        <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+      </svg>
+      <span class="brand__name">PhoneVision <span>Lab</span></span>
+    </a>
+    <nav class="nav__links" aria-label="主导航">
+      <a class="nav__link" data-nav="learn" href="learn.html">学习</a>
+      <a class="nav__link" data-nav="lab" href="lab.html">实验台</a>
+      <a class="nav__link" data-nav="projects" href="projects.html">我的项目</a>
+    </nav>
+    <div class="nav__right">
+      <span class="status">
+        <span class="status__dot" aria-hidden="true"></span>
+        手机未连接
+        <span class="status__sep" aria-hidden="true"></span>
+        <span class="status__detail">局域网</span>
+      </span>
+      <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+      <button class="nav__help" type="button" data-open-modal="help-modal" aria-label="帮助">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- 首屏 -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow">视觉 AI 学习实验室</p>
+        <h1 class="display hero__title" id="hero-title">用旧手机，<br>学会让 AI 看世界。</h1>
+        <p class="lead hero__lead">从认识图像到训练模型，通过动手实践理解计算机视觉。</p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="lesson.html">开始第一课</a>
+          <a class="btn btn--ghost" href="lab.html">进入实验台</a>
+        </div>
+        <p class="meta hero__facts">8 个章节 · 24 节课 · 无需显卡也能开始。</p>
+      </div>
+
+      <figure class="hero-art">
+        <div class="hero-art__frame">
+          <span class="hero-art__badge">示意</span>
+          <div class="hero-art__stage">
+            <svg class="hero-art__phone" viewBox="0 0 128 240" role="img" aria-labelledby="hero-phone-title" aria-describedby="hero-phone-desc" fill="none">
+              <title id="hero-phone-title">旧安卓手机上的摄像头预览</title>
+              <desc id="hero-phone-desc">一部直板旧手机，厚边框、顶部摄像头与底部主页键；屏幕里是书本和杯子的取景画面，叠加像素网格与蓝色取景框角标。</desc>
+              <rect x="8" y="8" width="112" height="224" rx="13" fill="#FFFFFF" stroke="#14203A" stroke-width="1.6"/>
+              <path d="M120 58v20" stroke="#14203A" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="64" cy="17" r="2.6" fill="#14203A"/>
+              <rect x="18" y="26" width="92" height="166" rx="4" fill="#FBF8F2" stroke="#14203A" stroke-width="1.6"/>
+              <rect x="24" y="32" width="80" height="118" fill="#F5F1E8" stroke="#D2CBBD" stroke-width="1.2"/>
+              <g stroke="#DDD6C8" stroke-width="0.8">
+                <path d="M34 32v118M44 32v118M54 32v118M64 32v118M74 32v118M84 32v118M94 32v118"/>
+                <path d="M24 42h80M24 52h80M24 62h80M24 72h80M24 82h80M24 92h80M24 102h80M24 112h80M24 122h80M24 132h80M24 142h80"/>
+              </g>
+              <path d="M26 126h76" stroke="#14203A" stroke-width="1.6" stroke-linecap="round"/>
+              <rect x="33" y="112" width="22" height="14" rx="1.5" fill="#FFFFFF" stroke="#14203A" stroke-width="1.6"/>
+              <path d="M33 118h22" stroke="#14203A" stroke-width="1.2"/>
+              <rect x="66" y="102" width="20" height="24" rx="2" fill="#FFFFFF" stroke="#14203A" stroke-width="1.6"/>
+              <path d="M86 108h4a6 6 0 0 1 0 12h-4" stroke="#14203A" stroke-width="1.6" stroke-linecap="round"/>
+              <g stroke="#1F4BE0" stroke-width="1.6" stroke-linecap="round">
+                <path d="M30 44V38h6"/>
+                <path d="M98 38h6v6"/>
+                <path d="M30 138v6h6"/>
+                <path d="M104 138v6h-6"/>
+              </g>
+              <circle cx="64" cy="170" r="9" stroke="#14203A" stroke-width="1.6"/>
+              <circle cx="64" cy="170" r="4" fill="#1F4BE0"/>
+              <rect x="32" y="163" width="14" height="14" rx="2" stroke="#14203A" stroke-width="1.6"/>
+              <rect x="82" y="163" width="14" height="14" rx="2" stroke="#14203A" stroke-width="1.6"/>
+              <path d="M82 168h14M82 173h14" stroke="#14203A" stroke-width="1.2"/>
+              <rect x="50" y="202" width="28" height="10" rx="5" stroke="#14203A" stroke-width="1.6"/>
+            </svg>
+            <span class="hero-note hero-note--res mono">640×480</span>
+            <span class="hero-note hero-note--gray">灰度</span>
+            <span class="hero-note hero-note--edge">边缘</span>
+          </div>
+        </div>
+        <figcaption class="hero-art__caption">
+          <span>示意画面 · 非真实设备</span>
+          <span class="mono">局域网 · MJPEG</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 学习路径 -->
+  <section class="section section--tight" aria-labelledby="path-title">
+    <div class="container">
+      <div class="section-head">
+        <div class="section-head__text">
+          <p class="eyebrow">学习路径</p>
+          <h2 class="h2" id="path-title">一条能走完的路径</h2>
+        </div>
+        <p class="section-head__aside small">四个阶段 · 从认识图像到手机端推理</p>
+      </div>
+      <ol class="path">
+        <li class="path__step">
+          <span class="path__num mono" aria-hidden="true">01</span>
+          <h3 class="path__title">认识视觉 AI</h3>
+          <p class="path__desc">分清像素、特征与分类的关系</p>
+        </li>
+        <li class="path__step">
+          <span class="path__num mono" aria-hidden="true">02</span>
+          <h3 class="path__title">连接旧手机</h3>
+          <p class="path__desc">让手机把摄像头画面推到电脑</p>
+        </li>
+        <li class="path__step">
+          <span class="path__num mono" aria-hidden="true">03</span>
+          <h3 class="path__title">采集与训练</h3>
+          <p class="path__desc">采一批自己的样本，训练小模型</p>
+        </li>
+        <li class="path__step">
+          <span class="path__num mono" aria-hidden="true">04</span>
+          <h3 class="path__title">手机端推理</h3>
+          <p class="path__desc">把模型放回手机，本机做判断</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 从这里开始 -->
+  <section class="section" aria-labelledby="start-title">
+    <div class="container">
+      <div class="section-head">
+        <div class="section-head__text">
+          <p class="eyebrow">课程入口</p>
+          <h2 class="h2" id="start-title">从这里开始</h2>
+        </div>
+        <p class="section-head__aside small">三条入口，可以按顺序，也可以按兴趣</p>
+      </div>
+
+      <div class="start__grid">
+        <article class="card card--blue course-card course-card--lead">
+          <div class="course-card__head">
+            <span class="course-card__num mono">01</span>
+            <span class="tag tag--know">起点</span>
+          </div>
+          <h3 class="card__title course-card__title">认识视觉 AI</h3>
+          <p class="course-card__desc">先分清像素、特征与分类，知道模型到底在看什么。</p>
+          <div class="course-card__art" aria-hidden="true">
+            <svg viewBox="0 0 160 96" aria-hidden="true" fill="none" stroke="#14203A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="14" width="144" height="68" rx="3" fill="#FFFFFF"/>
+              <rect x="28" y="26" width="16" height="16" fill="#14203A"/>
+              <rect x="50" y="26" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="72" y="26" width="16" height="16" fill="#D6E1FB"/>
+              <rect x="94" y="26" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="116" y="26" width="16" height="16" fill="#1F4BE0"/>
+              <rect x="28" y="48" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="50" y="48" width="16" height="16" fill="#14203A"/>
+              <rect x="72" y="48" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="94" y="48" width="16" height="16" fill="#E5DFD3"/>
+              <rect x="116" y="48" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="28" y="70" width="16" height="16" fill="#D6E1FB"/>
+              <rect x="50" y="70" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="72" y="70" width="16" height="16" fill="#14203A"/>
+              <rect x="94" y="70" width="16" height="16" fill="#FFFFFF"/>
+              <rect x="116" y="70" width="16" height="16" fill="#D6E1FB"/>
+            </svg>
+          </div>
+          <a class="link" href="lesson.html">开始第一课</a>
+        </article>
+
+        <article class="card card--mint course-card">
+          <div class="course-card__head">
+            <span class="course-card__num mono">02</span>
+          </div>
+          <h3 class="card__title course-card__title">动手处理图像</h3>
+          <p class="course-card__desc">亲手做灰度、模糊与边缘检测，理解一行行代码背后的图像。</p>
+          <div class="course-card__art" aria-hidden="true">
+            <svg viewBox="0 0 160 96" aria-hidden="true" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="14" y="26" width="16" height="44" fill="#14203A"/>
+              <rect x="36" y="26" width="16" height="44" fill="#3D4759"/>
+              <rect x="58" y="26" width="16" height="44" fill="#6E7686"/>
+              <rect x="80" y="26" width="16" height="44" fill="#9AA0AC"/>
+              <rect x="102" y="26" width="16" height="44" fill="#D2CBBD"/>
+              <rect x="124" y="26" width="16" height="44" fill="#FBF8F2" stroke="#14203A"/>
+              <path d="M10 70h18v-24h22v16h22V40h22v10h30" stroke="#1F4BE0"/>
+            </svg>
+          </div>
+          <a class="link" href="learn.html#ch3">查看图像处理</a>
+        </article>
+
+        <article class="card card--sand course-card">
+          <div class="course-card__head">
+            <span class="course-card__num mono">03</span>
+          </div>
+          <h3 class="card__title course-card__title">训练第一个模型</h3>
+          <p class="course-card__desc">用自己采的小样本，走完训练、评估与导出的全程。</p>
+          <div class="course-card__art" aria-hidden="true">
+            <svg viewBox="0 0 160 96" aria-hidden="true" fill="none" stroke="#14203A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="14" width="144" height="68" rx="3" fill="#FFFFFF"/>
+              <path d="M20 70h120" stroke="#D2CBBD" stroke-width="1.2"/>
+              <path d="M20 64l24-10 20 8 22-22 20 10 24-20" stroke="#1F4BE0"/>
+              <circle cx="44" cy="54" r="2.6" fill="#1F4BE0" stroke="none"/>
+              <circle cx="86" cy="40" r="2.6" fill="#1F4BE0" stroke="none"/>
+              <circle cx="130" cy="30" r="2.6" fill="#1F4BE0" stroke="none"/>
+              <path d="M20 24h24" stroke="#D2CBBD" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <a class="link" href="learn.html#ch5">查看训练课</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 学习进度 -->
+  <section class="section section--band progress-section" aria-labelledby="progress-title">
+    <div class="container">
+      <div class="progress-panel">
+        <div class="progress-panel__main">
+          <p class="eyebrow">本机记录</p>
+          <h2 class="h2 progress-panel__title" id="progress-title">学习进度</h2>
+          <p class="progress-panel__stat">
+            <span class="progress-panel__count" data-progress-count>0</span>
+            <span class="progress-panel__total">/ 24 课已完成</span>
+          </p>
+          <div class="progress progress-panel__bar" aria-hidden="true">
+            <div class="progress__bar" data-progress-bar data-progress-total="24"></div>
+          </div>
+          <p class="meta progress-panel__meta"><span class="u-mono" data-progress-percent data-progress-total="24">0%</span> · 进度只保存在这台设备的浏览器里</p>
+        </div>
+        <div class="progress-panel__aside">
+          <p class="small" data-progress-empty>首次使用 · 本机还没有学习记录</p>
+          <a class="link" href="learn.html">继续学习</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结尾 CTA -->
+  <section class="section cta" aria-labelledby="cta-title">
+    <div class="container cta__inner">
+      <div class="cta__text">
+        <p class="eyebrow">下一步</p>
+        <h2 class="h1" id="cta-title">准备好让旧手机<br>开始工作了吗？</h2>
+        <p class="lead cta__lead">连上设备看实时画面，或者按顺序从第一课走一遍。</p>
+      </div>
+      <div class="cta__actions">
+        <button class="btn btn--primary" type="button" data-open-modal="connect-modal">连接手机</button>
+        <a class="btn btn--ghost" href="learn.html">浏览课程</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div>
+        <a class="brand" href="index.html">
+          <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+            <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+            <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+            <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+            <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+            <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+          </svg>
+          <span class="brand__name">PhoneVision <span>Lab</span></span>
+        </a>
+        <p class="small u-mt3" style="max-width: 28ch">把闲置安卓手机变成采集设备与边缘推理终端的学习平台。</p>
+      </div>
+      <div>
+        <p class="footer__title">学习</p>
+        <a class="footer__link" href="learn.html">全部课程</a>
+        <a class="footer__link" href="lesson.html">从第一课开始</a>
+        <a class="footer__link" href="learn.html#ch3">图像处理</a>
+      </div>
+      <div>
+        <p class="footer__title">实践</p>
+        <a class="footer__link" href="lab.html">视觉实验台</a>
+        <a class="footer__link" href="projects.html">我的项目</a>
+        <a class="footer__link" href="lab.html#metrics">性能指标</a>
+      </div>
+      <div>
+        <p class="footer__title">关于</p>
+        <a class="footer__link" href="#" data-open-modal="help-modal">帮助与常见问题</a>
+        <a class="footer__link" href="#" data-open-modal="connect-modal">连接手机</a>
+        <span class="footer__link u-muted">本地运行 · 无账号 · 无云端</span>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© <span data-year></span> PhoneVision Lab · 学习原型</span>
+      <span>页面中的画面、分类结果与性能数字均为示意，不代表真实测试。</span>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="connect-modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <div>
+        <p class="eyebrow eyebrow--plain">局域网连接</p>
+        <h2 class="modal__title" id="connect-title">连接你的旧手机</h2>
+      </div>
+      <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <ol class="steps">
+        <li><strong>让两台设备连同一个 Wi-Fi。</strong>手机和电脑必须在同一局域网，不要用手机热点做桥接。</li>
+        <li><strong>在手机 App 里点「开始推流」。</strong>App 会在屏幕上显示本机地址，例如 192.168.2.14:8080。</li>
+        <li><strong>把地址填到下面。</strong>电脑会先请求 /ping 确认手机在线，再开始接收 MJPEG 画面。</li>
+      </ol>
+      <form class="stack u-mt5" data-connect-form novalidate>
+        <label class="field">
+          <span class="field__label">手机地址</span>
+          <input class="input input--mono" name="host" type="text" inputmode="decimal"
+                 placeholder="192.168.2.14" autocomplete="off" spellcheck="false">
+          <span class="field__hint">以手机 App 屏幕上显示的地址为准，不同 Wi-Fi 下会变。</span>
+        </label>
+        <label class="field">
+          <span class="field__label">端口</span>
+          <input class="input input--mono" name="port" type="text" inputmode="numeric" value="8080">
+        </label>
+        <div data-connect-result hidden></div>
+        <div class="modal__actions">
+          <button class="btn btn--primary" type="submit">检测并连接</button>
+          <a class="btn btn--ghost" href="lab.html">先看示意画面</a>
+        </div>
+        <p class="meta">原型说明：本页面没有网络层，不会真的连接设备，也不会保存地址。真实连接由桌面客户端完成。</p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <div>
+        <p class="eyebrow eyebrow--plain">帮助</p>
+        <h2 class="modal__title" id="help-title">常见问题</h2>
+      </div>
+      <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body stack">
+      <div><p class="h3">连不上手机？</p><p class="small u-mt2">确认手机 App 已点「开始推流」、两台设备在同一 Wi-Fi、地址与 App 显示一致。电脑上可先访问 http://手机IP:8080/ping 验证。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">训练按钮是灰的？</p><p class="small u-mt2">训练需要独立的 Python 环境（requirements-train.txt）。便携包不内置 TensorFlow，请改用 start-training.cmd 启动。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">为什么 LED 没有真的亮？</p><p class="small u-mt2">ESP32 与 LED 的真机链路仍在验证中。电脑端只能确认到「已接收」，没有「已执行」回执时不会显示成功。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">数据存在哪里？</p><p class="small u-mt2">默认在本机 %LOCALAPPDATA%\PhoneVisionLab，不上传云端，也没有账号体系。</p></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

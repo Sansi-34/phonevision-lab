@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>学习中心 · PhoneVision Lab</title>
+  <meta name="description" content="PhoneVision Lab 学习中心：8 章 24 课，从像素与图像处理到数据集、训练、手机本地推理与 ESP32 联动。">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/page-learn.css">
+  <script defer src="assets/js/site.js"></script>
+</head>
+<body data-page="learn">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+        <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+          <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+          <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+          <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+        </svg>
+        <span class="brand__name">PhoneVision <span>Lab</span></span>
+      </a>
+      <nav class="nav__links" aria-label="主导航">
+        <a class="nav__link" data-nav="learn" href="learn.html">学习</a>
+        <a class="nav__link" data-nav="lab" href="lab.html">实验台</a>
+        <a class="nav__link" data-nav="projects" href="projects.html">我的项目</a>
+      </nav>
+      <div class="nav__right">
+        <span class="status">
+          <span class="status__dot" aria-hidden="true"></span>
+          手机未连接
+          <span class="status__sep" aria-hidden="true"></span>
+          <span class="status__detail">局域网</span>
+        </span>
+        <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+        <button class="nav__help" type="button" data-open-modal="help-modal" aria-label="帮助">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="learn-hero">
+      <div class="container">
+        <div class="learn-hero__grid">
+          <div class="learn-hero__text">
+            <p class="eyebrow">学习中心</p>
+            <h1 class="display learn-hero__title">八章，从看懂一张图到让灯亮起来</h1>
+            <p class="lead learn-hero__lead">从像素、通道与分辨率讲起，走到采集、处理、数据集、训练与部署。</p>
+            <p class="lead learn-hero__lead">标注「实验」的课需要动手完成；实验台提供图像处理与采集的示意交互。</p>
+          </div>
+          <aside class="learn-hero__aside" aria-label="课程规模">
+            <p class="learn-hero__aside-label">课程规模</p>
+            <p class="hero-stats">
+              <span class="hero-stats__item"><strong class="hero-stats__num">8</strong> 章</span>
+              <span class="hero-stats__sep" aria-hidden="true">·</span>
+              <span class="hero-stats__item"><strong class="hero-stats__num">24</strong> 课</span>
+              <span class="hero-stats__sep" aria-hidden="true">·</span>
+              <span class="hero-stats__item">其中 <strong class="hero-stats__num">11</strong> 个动手实验</span>
+            </p>
+            <p class="small learn-hero__note">课程结构按桌面客户端与手机 App 的实际功能编写。手机负责采集与本机推理，电脑负责预览、处理、数据集与训练。真机端到端与 ESP32 联动仍在验证中，网页原型不连接真实设备。</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <div class="learn-tools">
+      <div class="container learn-tools__inner">
+        <div class="chips" role="group" aria-label="筛选课程">
+          <button class="chip" type="button" data-filter="all" aria-pressed="true">全部</button>
+          <button class="chip" type="button" data-filter="know" aria-pressed="false">知识课程</button>
+          <button class="chip" type="button" data-filter="lab" aria-pressed="false">动手实验</button>
+          <button class="chip" type="button" data-filter="todo" aria-pressed="false">未完成</button>
+        </div>
+        <p class="learn-tools__progress meta">
+          本机进度
+          <span class="u-mono" data-progress-count>0</span> / 24 课
+          <span class="progress progress--thin learn-tools__bar" aria-hidden="true"><span class="progress__bar" data-progress-bar data-progress-total="24"></span></span>
+        </p>
+      </div>
+    </div>
+
+    <section class="chapters" aria-labelledby="chapters-title">
+      <div class="container">
+        <div class="section-head">
+          <div class="section-head__text">
+            <p class="eyebrow eyebrow--plain">课程目录</p>
+            <h2 class="h2" id="chapters-title">按章推进，每章解决一个问题</h2>
+          </div>
+          <div class="section-head__aside">
+            <p class="meta">8 章 · 24 课 · 11 个实验</p>
+            <p class="meta chapters__note">原型说明：完整正文目前以第 1 章第 2 课为样例。</p>
+          </div>
+        </div>
+
+        <!-- 第 1 章 -->
+        <section class="chapter" data-chapter id="ch1" aria-labelledby="ch1-title">
+          <p class="chapter__num" aria-hidden="true">01</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch1-title"><span class="sr-only">第 1 章：</span>认识视觉 AI</h2>
+                <p class="chapter__desc">先建立词汇：像素、通道、分辨率，以及旧手机在整条链路里的位置。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c1-1,c1-2,c1-3">0 / 3</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c1-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">什么是计算机视觉</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">先分清相机、算法与判断三件事</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c1-2" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">图像是数字组成的</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">像素是数字，画面是排好队的表格</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c1-3" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">旧手机能做什么</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">算力有限，但采集与本地推理够用</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+            <div class="callout callout--info chapter__extra">
+              <svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/></svg>
+              <div>
+                <p class="callout__title">前三课按顺序读，别跳</p>
+                <p>「图像是数字组成的」是后面所有处理与训练的地基。如果只想快点看到效果，可以先到实验台，但回来仍建议补上第 1 章。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 第 2 章 -->
+        <section class="chapter" data-chapter id="ch2" aria-labelledby="ch2-title">
+          <p class="chapter__num" aria-hidden="true">02</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch2-title"><span class="sr-only">第 2 章：</span>使用手机采集图像</h2>
+                <p class="chapter__desc">让手机与电脑在同一局域网里说上话，并决定传多大的画面。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c2-1,c2-2,c2-3">0 / 3</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c2-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">局域网推流是怎么工作的</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">手机出画面，电脑经局域网逐帧接收</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c2-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">连接你的旧手机</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">填地址、点连接，确认画面能稳定到达</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c2-3" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">分辨率与画面质量</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">改分辨率，观察清晰度与帧率的变化</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- 第 3 章 -->
+        <section class="chapter" data-chapter id="ch3" aria-labelledby="ch3-title">
+          <p class="chapter__num" aria-hidden="true">03</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch3-title"><span class="sr-only">第 3 章：</span>体验图像处理</h2>
+                <p class="chapter__desc">灰度、边缘、颜色与轮廓：四个最常用的传统视觉步骤。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c3-1,c3-2,c3-3,c3-4">0 / 4</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c3-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">灰度：先去色再计算</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">去掉颜色，只留亮度，计算会更快</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c3-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">Canny 边缘检测</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">用双阈值找出画面里的轮廓线</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c3-3" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">HSV 颜色分割</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">按色调与饱和度筛出目标颜色区域</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c3-4" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">轮廓与面积过滤</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">去掉过小的噪点，只留下目标形状</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+            <figure class="process-figure chapter__extra">
+              <div class="process-figure__row">
+                <div class="process-step">
+                  <svg viewBox="0 0 120 96" aria-hidden="true">
+                    <rect x="18" y="6" width="21" height="21" fill="#D6E1FB"/><rect x="39" y="6" width="21" height="21" fill="#D6E1FB"/><rect x="60" y="6" width="21" height="21" fill="#D6E1FB"/><rect x="81" y="6" width="21" height="21" fill="#14203A"/>
+                    <rect x="18" y="27" width="21" height="21" fill="#D6E1FB"/><rect x="39" y="27" width="21" height="21" fill="#D6E1FB"/><rect x="60" y="27" width="21" height="21" fill="#14203A"/><rect x="81" y="27" width="21" height="21" fill="#14203A"/>
+                    <rect x="18" y="48" width="21" height="21" fill="#D6E1FB"/><rect x="39" y="48" width="21" height="21" fill="#14203A"/><rect x="60" y="48" width="21" height="21" fill="#14203A"/><rect x="81" y="48" width="21" height="21" fill="#14203A"/>
+                    <rect x="18" y="69" width="21" height="21" fill="#14203A"/><rect x="39" y="69" width="21" height="21" fill="#14203A"/><rect x="60" y="69" width="21" height="21" fill="#14203A"/><rect x="81" y="69" width="21" height="21" fill="#14203A"/>
+                  </svg>
+                  <span class="process-step__label">原画面</span>
+                </div>
+                <span class="process-arrow" aria-hidden="true">→</span>
+                <div class="process-step">
+                  <svg viewBox="0 0 120 96" aria-hidden="true">
+                    <rect x="18" y="6" width="21" height="21" fill="#C9C4BA"/><rect x="39" y="6" width="21" height="21" fill="#C9C4BA"/><rect x="60" y="6" width="21" height="21" fill="#C9C4BA"/><rect x="81" y="6" width="21" height="21" fill="#4A4A4A"/>
+                    <rect x="18" y="27" width="21" height="21" fill="#C9C4BA"/><rect x="39" y="27" width="21" height="21" fill="#C9C4BA"/><rect x="60" y="27" width="21" height="21" fill="#4A4A4A"/><rect x="81" y="27" width="21" height="21" fill="#4A4A4A"/>
+                    <rect x="18" y="48" width="21" height="21" fill="#C9C4BA"/><rect x="39" y="48" width="21" height="21" fill="#4A4A4A"/><rect x="60" y="48" width="21" height="21" fill="#4A4A4A"/><rect x="81" y="48" width="21" height="21" fill="#4A4A4A"/>
+                    <rect x="18" y="69" width="21" height="21" fill="#4A4A4A"/><rect x="39" y="69" width="21" height="21" fill="#4A4A4A"/><rect x="60" y="69" width="21" height="21" fill="#4A4A4A"/><rect x="81" y="69" width="21" height="21" fill="#4A4A4A"/>
+                  </svg>
+                  <span class="process-step__label">灰度</span>
+                </div>
+                <span class="process-arrow" aria-hidden="true">→</span>
+                <div class="process-step">
+                  <svg viewBox="0 0 120 96" aria-hidden="true">
+                    <rect x="18" y="6" width="84" height="84" fill="#FFFFFF" stroke="#E5DFD3"/>
+                    <path d="M102 6 L18 90" fill="none" stroke="#14203A" stroke-width="2.4"/>
+                  </svg>
+                  <span class="process-step__label">边缘</span>
+                </div>
+              </div>
+              <figcaption class="meta">示意图：同一块像素数组先去色、再找亮度变化明显的位置，最后只保留边缘。真实结果取决于画面与阈值。</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <!-- 第 4 章 -->
+        <section class="chapter" data-chapter id="ch4" aria-labelledby="ch4-title">
+          <p class="chapter__num" aria-hidden="true">04</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch4-title"><span class="sr-only">第 4 章：</span>创建分类数据集</h2>
+                <p class="chapter__desc">把随手拍变成可训练的数据集，并做一次数据体检。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c4-1,c4-2,c4-3">0 / 3</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c4-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">分类数据集长什么样</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">每张图一个标签，目录就是类别</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c4-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">采集：单张与连续</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">单张补漏，连续采集快速攒样本</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c4-3" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">数据体检与训练/验证划分</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">先查重复与模糊，再按比例切分</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- 第 5 章 -->
+        <section class="chapter" data-chapter id="ch5" aria-labelledby="ch5-title">
+          <p class="chapter__num" aria-hidden="true">05</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch5-title"><span class="sr-only">第 5 章：</span>训练模型</h2>
+                <p class="chapter__desc">理解训练在调什么，再跑一次小规模实验。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c5-1,c5-2,c5-3,c5-4">0 / 4</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c5-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">训练到底在做什么</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">不断调参数，让预测尽量贴近标签</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c5-2" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">参数怎么选</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">学习率、批大小与轮数各自影响什么</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c5-3" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">开始第一次训练</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">跑一次小规模训练，看损失是否下降</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c5-4" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">看懂准确率与过拟合</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">训练集好看，不代表新图片也认得出</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+            <aside class="card card--sand chapter__extra chapter-checklist" aria-labelledby="ch5-check">
+              <p class="card__title" id="ch5-check">训练前检查清单</p>
+              <ul class="checklist u-mt3">
+                <li>训练集与验证集已经分开，划分比例写清楚。</li>
+                <li>每个类别的样本量大致接近，没有空类别。</li>
+                <li>训练需要独立的 Python 环境（requirements-train.txt），便携包不内置 TensorFlow。</li>
+                <li>网页原型不会真的训练模型；真实训练需要独立的 Python 环境。</li>
+              </ul>
+              <p class="meta u-mt3">以上任一项不满足，先回到第 4 章整理数据。</p>
+            </aside>
+          </div>
+        </section>
+
+        <!-- 第 6 章 -->
+        <section class="chapter" data-chapter id="ch6" aria-labelledby="ch6-title">
+          <p class="chapter__num" aria-hidden="true">06</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch6-title"><span class="sr-only">第 6 章：</span>部署到旧手机</h2>
+                <p class="chapter__desc">把训练结果打包、导入手机，了解本机推理的完整流程。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c6-1,c6-2,c6-3">0 / 3</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c6-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">模型包里有什么</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">权重、标签与输入尺寸，缺一不可</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c6-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">导入并在手机本地推理</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">把模型放进 App，断网也能给出结果</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c6-3" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">预测不准怎么排查</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">从光线、构图与训练数据三条线找原因</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- 第 7 章 -->
+        <section class="chapter" data-chapter id="ch7" aria-labelledby="ch7-title">
+          <p class="chapter__num" aria-hidden="true">07</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch7-title"><span class="sr-only">第 7 章：</span>硬件联动</h2>
+                <p class="chapter__desc">从一根杜邦线开始，把分类结果变成 LED 的亮与灭。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c7-1,c7-2">0 / 2</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c7-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">ESP32 与 LED 接线</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">认清引脚与电平，别把电源接反</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c7-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">手动测试与自动联动</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">先手动点亮，再让规则接管</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <!-- 第 8 章 -->
+        <section class="chapter" data-chapter id="ch8" aria-labelledby="ch8-title">
+          <p class="chapter__num" aria-hidden="true">08</p>
+          <div class="chapter__body">
+            <header class="chapter__head">
+              <div class="chapter__intro">
+                <h2 class="h2 chapter__title" id="ch8-title"><span class="sr-only">第 8 章：</span>性能分析</h2>
+                <p class="chapter__desc">分清三种帧率，采样并导出可核对的数据。</p>
+              </div>
+              <p class="chapter__progress">
+                <span class="chapter__progress-label">本机进度</span>
+                <span class="chapter__progress-value u-mono" data-course-progress="c8-1,c8-2">0 / 2</span>
+              </p>
+            </header>
+            <ol class="course-list">
+              <li>
+                <a class="course" data-course="c8-1" data-course-type="know" href="lesson.html">
+                  <span class="course__main"><span class="course__name">三个帧率不是一回事</span><span class="tag tag--know">知识</span></span>
+                  <span class="course__desc">采集、传输与显示各有各的计数口径</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+              <li>
+                <a class="course" data-course="c8-2" data-course-type="lab" href="lesson.html">
+                  <span class="course__main"><span class="course__name">采样并导出报告</span><span class="tag tag--lab">实验</span></span>
+                  <span class="course__desc">记录一段真实传输，导出可核对的数据</span>
+                  <span class="course__state"><span class="tag" data-course-state>未开始</span></span>
+                  <span class="course__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            </ol>
+            <aside class="chapter__extra report-list" aria-labelledby="ch8-report">
+              <p class="report-list__title" id="ch8-report">报告包含什么</p>
+              <ul class="checklist checklist--cols">
+                <li>采样时长、设备与分辨率</li>
+                <li>接收帧率与显示帧率</li>
+                <li>丢帧计数与时间戳</li>
+                <li>原始采样记录（CSV）</li>
+                <li class="u-muted">未采集：手机推理耗时、硬件执行耗时、功耗</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="learn-advice" aria-labelledby="advice-title">
+      <div class="container learn-advice__inner">
+        <div class="learn-advice__text">
+          <p class="eyebrow eyebrow--plain">学习建议</p>
+          <h2 class="h2" id="advice-title">按章读，按课做，别急着训练</h2>
+          <p class="body u-mt3">知识课先读一遍建立概念，实验课按课程说明动手。网页原型在实验台提供图像处理与采集的示意交互，数据集、训练与硬件步骤需要在桌面客户端完成。每课的完成标记只写入本机浏览器，不联网、不上传，也不代表真实设备已经验证。</p>
+          <p class="small u-mt2">通常，数据集质量比训练参数更影响结果。建议先完成第 1–3 章，再开始采集自己的数据。</p>
+        </div>
+        <a class="btn btn--primary" href="lab.html">去实验台
+          <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <a class="brand" href="index.html">
+            <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+              <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+              <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+              <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+            </svg>
+          </a>
+          <p class="small u-mt3" style="max-width: 28ch">把闲置安卓手机变成采集设备与边缘推理终端的学习平台。</p>
+        </div>
+        <div>
+          <p class="footer__title">学习</p>
+          <a class="footer__link" href="learn.html">全部课程</a>
+          <a class="footer__link" href="lesson.html">从第一课开始</a>
+          <a class="footer__link" href="learn.html#ch3">图像处理</a>
+        </div>
+        <div>
+          <p class="footer__title">实践</p>
+          <a class="footer__link" href="lab.html">视觉实验台</a>
+          <a class="footer__link" href="projects.html">我的项目</a>
+          <a class="footer__link" href="lab.html#metrics">性能指标</a>
+        </div>
+        <div>
+          <p class="footer__title">关于</p>
+          <a class="footer__link" href="#" data-open-modal="help-modal">帮助与常见问题</a>
+          <a class="footer__link" href="#" data-open-modal="connect-modal">连接手机</a>
+          <span class="footer__link u-muted">本地运行 · 无账号 · 无云端</span>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year></span> PhoneVision Lab · 学习原型</span>
+        <span>页面中的画面、分类结果与性能数字均为示意，不代表真实测试。</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal" id="connect-modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">局域网连接</p>
+          <h2 class="modal__title" id="connect-title">连接你的旧手机</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <ol class="steps">
+          <li><strong>让两台设备连同一个 Wi-Fi。</strong>手机和电脑必须在同一局域网，不要用手机热点做桥接。</li>
+          <li><strong>在手机 App 里点「开始推流」。</strong>App 会在屏幕上显示本机地址，例如 192.168.2.14:8080。</li>
+          <li><strong>把地址填到下面。</strong>电脑会先请求 /ping 确认手机在线，再开始接收 MJPEG 画面。</li>
+        </ol>
+        <form class="stack u-mt5" data-connect-form novalidate>
+          <label class="field">
+            <span class="field__label">手机地址</span>
+            <input class="input input--mono" name="host" type="text" inputmode="decimal"
+                   placeholder="192.168.2.14" autocomplete="off" spellcheck="false">
+            <span class="field__hint">以手机 App 屏幕上显示的地址为准，不同 Wi-Fi 下会变。</span>
+          </label>
+          <label class="field">
+            <span class="field__label">端口</span>
+            <input class="input input--mono" name="port" type="text" inputmode="numeric" value="8080">
+          </label>
+          <div data-connect-result hidden></div>
+          <div class="modal__actions">
+            <button class="btn btn--primary" type="submit">检测并连接</button>
+            <a class="btn btn--ghost" href="lab.html">先看示意画面</a>
+          </div>
+          <p class="meta">原型说明：本页面没有网络层，不会真的连接设备，也不会保存地址。真实连接由桌面客户端完成。</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">帮助</p>
+          <h2 class="modal__title" id="help-title">常见问题</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body stack">
+        <div><p class="h3">连不上手机？</p><p class="small u-mt2">确认手机 App 已点「开始推流」、两台设备在同一 Wi-Fi、地址与 App 显示一致。电脑上可先访问 http://手机IP:8080/ping 验证。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">训练按钮是灰的？</p><p class="small u-mt2">训练需要独立的 Python 环境（requirements-train.txt）。便携包不内置 TensorFlow，请改用 start-training.cmd 启动。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">为什么 LED 没有真的亮？</p><p class="small u-mt2">ESP32 与 LED 的真机链路仍在验证中。电脑端只能确认到「已接收」，没有「已执行」回执时不会显示成功。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">数据存在哪里？</p><p class="small u-mt2">默认在本机 %LOCALAPPDATA%\PhoneVisionLab，不上传云端，也没有账号体系。</p></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

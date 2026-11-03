@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视觉实验台 · PhoneVision Lab</title>
+  <meta name="description" content="在浏览器里逐像素运行灰度、Canny、HSV 与轮廓四种图像处理，观察同一帧示意画面在不同算法下的输出。">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/page-lab.css">
+  <script defer src="assets/js/site.js"></script>
+  <script defer src="assets/js/lab.js"></script>
+</head>
+<body data-page="lab">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+        <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+          <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+          <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+          <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+        </svg>
+        <span class="brand__name">PhoneVision <span>Lab</span></span>
+      </a>
+      <nav class="nav__links" aria-label="主导航">
+        <a class="nav__link" data-nav="learn" href="learn.html">学习</a>
+        <a class="nav__link" data-nav="lab" href="lab.html">实验台</a>
+        <a class="nav__link" data-nav="projects" href="projects.html">我的项目</a>
+      </nav>
+      <div class="nav__right">
+        <span class="status">
+          <span class="status__dot" aria-hidden="true"></span>
+          手机未连接
+          <span class="status__sep" aria-hidden="true"></span>
+          <span class="status__detail">局域网</span>
+        </span>
+        <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+        <button class="nav__help" type="button" data-open-modal="help-modal" aria-label="帮助">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="lab-page" id="main">
+    <div class="container">
+      <header class="lab-hero">
+        <div class="lab-hero__text">
+          <p class="eyebrow">实验台</p>
+          <h1 class="h1 u-mt2">视觉实验台</h1>
+          <p class="lead u-mt3">同一帧示意画面，四种逐像素算法。切换模式、拖动阈值，观察结果如何变化。</p>
+        </div>
+        <div class="lab-hero__aside">
+          <span class="status">
+            <span class="status__dot" aria-hidden="true"></span>
+            手机未连接
+            <span class="status__sep" aria-hidden="true"></span>
+            <span class="status__detail">局域网</span>
+          </span>
+          <div class="lab-hero__actions">
+            <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+            <button class="btn btn--ghost btn--sm" type="button" data-open-modal="connect-modal">更换设备</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="callout callout--warn lab-callout u-mt5" role="note">
+        <svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4.5 21 20H3L12 4.5Z"/><path d="M12 10v4.2"/><circle cx="12" cy="17.2" r=".9" fill="currentColor" stroke="none"/>
+        </svg>
+        <div class="lab-callout__body">
+          <p class="callout__title">示意模式</p>
+          <p>当前是示意画面。没有连接真实手机，因此下方帧率与丢帧不会出现数值——它们会显示「未采集」。</p>
+        </div>
+        <a class="link lab-callout__link" href="#" data-open-modal="connect-modal">怎么连接真实手机</a>
+      </div>
+
+      <div class="lab-layout u-mt5">
+        <section class="card card--flush lab-preview" aria-labelledby="preview-title">
+          <div class="lab-preview__head">
+            <div class="lab-preview__id">
+              <h2 class="card__title" id="preview-title">示意设备 · 未连接</h2>
+              <span class="tag tag--plan">示意</span>
+            </div>
+            <span class="status lab-status--sm">
+              <span class="status__dot" aria-hidden="true"></span>
+              未连接
+            </span>
+          </div>
+
+          <div class="lab-stage">
+            <div class="lab-stage__chips" aria-hidden="true">
+              <span class="lab-chip" id="mode-chip">原始</span>
+              <span class="lab-chip">640 × 480</span>
+            </div>
+            <canvas id="lab-canvas" width="640" height="480" aria-label="示意摄像头画面：暖灰桌面上有一个红色圆形、一个蓝色矩形和一个绿色方块，当前为原始画面。画面由程序生成，不是真实设备。">你的浏览器不支持 canvas，无法显示示意画面。</canvas>
+          </div>
+
+          <div class="lab-toolbar">
+            <button class="btn btn--quiet btn--sm" type="button" id="snapshot-btn">截图</button>
+            <button class="btn btn--quiet btn--sm" type="button" id="capture-one">采集一张</button>
+            <button class="btn btn--quiet btn--sm lab-rec" type="button" id="capture-live" data-recording="false" aria-pressed="false">开始连续采集</button>
+          </div>
+          <p class="lab-capture-note" id="capture-note">本次已采集 0 张（示意，不会真的写入文件）</p>
+
+          <div class="lab-metrics" id="metrics">
+            <div class="metric" title="接收帧率：电脑从手机 MJPEG 流中解析成功的帧数/秒；示意模式不产生设备数据。">
+              <p class="metric__label">接收帧率</p>
+              <p class="metric__value">—</p>
+              <p class="metric__sub">未采集</p>
+            </div>
+            <div class="metric" title="显示帧率：电脑实际绘制到窗口的帧数/秒；示意模式不产生设备数据。">
+              <p class="metric__label">显示帧率</p>
+              <p class="metric__value">—</p>
+              <p class="metric__sub">未采集</p>
+            </div>
+            <div class="metric" title="丢帧：接收后未绘制到窗口的帧数；示意模式不产生设备数据。">
+              <p class="metric__label">丢帧</p>
+              <p class="metric__value">—</p>
+              <p class="metric__sub">未采集</p>
+            </div>
+            <p class="lab-metrics__note">示意模式不产生设备数据</p>
+          </div>
+        </section>
+
+        <aside class="card lab-controls" aria-labelledby="controls-title">
+          <div class="card__head">
+            <h2 class="card__title" id="controls-title">处理模式</h2>
+            <span class="meta">按 1–5 切换</span>
+          </div>
+
+          <div class="segmented" role="group" aria-label="选择图像处理模式">
+            <button class="segmented__btn" type="button" data-mode="raw" aria-pressed="true">原始</button>
+            <button class="segmented__btn" type="button" data-mode="gray" aria-pressed="false">灰度</button>
+            <button class="segmented__btn" type="button" data-mode="canny" aria-pressed="false">Canny</button>
+            <button class="segmented__btn" type="button" data-mode="hsv" aria-pressed="false">HSV</button>
+            <button class="segmented__btn" type="button" data-mode="contour" aria-pressed="false">轮廓</button>
+          </div>
+
+          <div class="lab-params u-mt5" id="lab-params">
+            <p class="lab-params__empty" data-param-empty>该模式没有可调参数</p>
+            <p class="meta lab-params__hint" data-param-hint hidden></p>
+
+            <div class="param-group" data-param-group="canny" hidden>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="canny-low">低阈值</label>
+                  <output class="param-row__value" for="canny-low" data-output-for="canny-low">50</output>
+                </div>
+                <input class="param-range" id="canny-low" type="range" min="0" max="255" step="1" value="50" data-param="low">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="canny-high">高阈值</label>
+                  <output class="param-row__value" for="canny-high" data-output-for="canny-high">150</output>
+                </div>
+                <input class="param-range" id="canny-high" type="range" min="0" max="255" step="1" value="150" data-param="high">
+              </div>
+            </div>
+
+            <div class="param-group" data-param-group="hsv" hidden>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-h-min">H 最小值</label>
+                  <output class="param-row__value" for="hsv-h-min" data-output-for="hsv-h-min">0</output>
+                </div>
+                <input class="param-range" id="hsv-h-min" type="range" min="0" max="179" step="1" value="0" data-param="hMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-h-max">H 最大值</label>
+                  <output class="param-row__value" for="hsv-h-max" data-output-for="hsv-h-max">179</output>
+                </div>
+                <input class="param-range" id="hsv-h-max" type="range" min="0" max="179" step="1" value="179" data-param="hMax">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-s-min">S 最小值</label>
+                  <output class="param-row__value" for="hsv-s-min" data-output-for="hsv-s-min">60</output>
+                </div>
+                <input class="param-range" id="hsv-s-min" type="range" min="0" max="255" step="1" value="60" data-param="sMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-s-max">S 最大值</label>
+                  <output class="param-row__value" for="hsv-s-max" data-output-for="hsv-s-max">255</output>
+                </div>
+                <input class="param-range" id="hsv-s-max" type="range" min="0" max="255" step="1" value="255" data-param="sMax">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-v-min">V 最小值</label>
+                  <output class="param-row__value" for="hsv-v-min" data-output-for="hsv-v-min">60</output>
+                </div>
+                <input class="param-range" id="hsv-v-min" type="range" min="0" max="255" step="1" value="60" data-param="vMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="hsv-v-max">V 最大值</label>
+                  <output class="param-row__value" for="hsv-v-max" data-output-for="hsv-v-max">255</output>
+                </div>
+                <input class="param-range" id="hsv-v-max" type="range" min="0" max="255" step="1" value="255" data-param="vMax">
+              </div>
+            </div>
+
+            <div class="param-group" data-param-group="contour" hidden>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-min-area">最小面积</label>
+                  <output class="param-row__value" for="contour-min-area" data-output-for="contour-min-area">500</output>
+                </div>
+                <input class="param-range" id="contour-min-area" type="range" min="0" max="5000" step="50" value="500" data-param="minArea">
+              </div>
+
+              <p class="param-group__title">HSV 阈值（与 HSV 模式共用）</p>
+
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-h-min">H 最小值</label>
+                  <output class="param-row__value" for="contour-h-min" data-output-for="contour-h-min">0</output>
+                </div>
+                <input class="param-range" id="contour-h-min" type="range" min="0" max="179" step="1" value="0" data-param="hMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-h-max">H 最大值</label>
+                  <output class="param-row__value" for="contour-h-max" data-output-for="contour-h-max">179</output>
+                </div>
+                <input class="param-range" id="contour-h-max" type="range" min="0" max="179" step="1" value="179" data-param="hMax">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-s-min">S 最小值</label>
+                  <output class="param-row__value" for="contour-s-min" data-output-for="contour-s-min">60</output>
+                </div>
+                <input class="param-range" id="contour-s-min" type="range" min="0" max="255" step="1" value="60" data-param="sMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-s-max">S 最大值</label>
+                  <output class="param-row__value" for="contour-s-max" data-output-for="contour-s-max">255</output>
+                </div>
+                <input class="param-range" id="contour-s-max" type="range" min="0" max="255" step="1" value="255" data-param="sMax">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-v-min">V 最小值</label>
+                  <output class="param-row__value" for="contour-v-min" data-output-for="contour-v-min">60</output>
+                </div>
+                <input class="param-range" id="contour-v-min" type="range" min="0" max="255" step="1" value="60" data-param="vMin">
+              </div>
+              <div class="param-row">
+                <div class="param-row__head">
+                  <label class="param-row__label" for="contour-v-max">V 最大值</label>
+                  <output class="param-row__value" for="contour-v-max" data-output-for="contour-v-max">255</output>
+                </div>
+                <input class="param-range" id="contour-v-max" type="range" min="0" max="255" step="1" value="255" data-param="vMax">
+              </div>
+            </div>
+          </div>
+
+          <div class="lab-mode-note u-mt5">
+            <p class="param-row__label">当前模式说明</p>
+            <p class="small" id="mode-desc">不改变任何像素：先看清示意场景本身的颜色与位置，再切换到其他模式，比较同一帧被算法改写后的样子。</p>
+          </div>
+
+          <details class="lab-details u-mt5">
+            <summary>这个实验在学习什么</summary>
+            <ul>
+              <li><strong>灰度</strong>：去掉颜色，只看亮度，理解 0.299R + 0.587G + 0.114B 的加权。</li>
+              <li><strong>Canny</strong>：先求梯度，再用双阈值把强边缘与相邻的弱边缘连接起来。</li>
+              <li><strong>HSV</strong>：按色相、饱和度、明度区间分割颜色，比直接比较 RGB 更稳定。</li>
+              <li><strong>轮廓</strong>：在掩膜上找连通区域，用面积过滤噪点，再量出外接矩形与中心。</li>
+            </ul>
+          </details>
+
+          <p class="meta lab-controls__foot u-mt5">演示在浏览器里完成计算，与桌面客户端使用同一套 OpenCV 思路，但数值不完全等价。</p>
+        </aside>
+      </div>
+
+      <p class="sr-only" id="lab-announce" aria-live="polite"></p>
+
+      <section class="lab-next" aria-labelledby="next-title">
+        <div class="section-head">
+          <div class="section-head__text">
+            <p class="eyebrow">下一步</p>
+            <h2 class="h2" id="next-title">把实验台接回完整流程</h2>
+          </div>
+          <p class="section-head__aside meta">示意页面不产生真实数据</p>
+        </div>
+
+        <div class="lab-next__grid">
+          <article class="card lab-step">
+            <p class="lab-step__num">01</p>
+            <h3 class="h3">去数据集</h3>
+            <p class="small">把采集到的图片整理成可训练的数据集，先看目录结构与标注约定。</p>
+            <a class="link" href="learn.html#ch4">查看第 4 章</a>
+          </article>
+          <article class="card lab-step">
+            <p class="lab-step__num">02</p>
+            <h3 class="h3">去训练</h3>
+            <p class="small">了解迁移学习与训练脚本，明白模型文件是怎么产生的。</p>
+            <a class="link" href="learn.html#ch5">查看第 5 章</a>
+          </article>
+          <article class="card lab-step">
+            <p class="lab-step__num">03</p>
+            <h3 class="h3">去硬件联动</h3>
+            <p class="small">看看手机端规则怎么触发 ESP32 与 LED，以及四态回执的意义。</p>
+            <a class="link" href="learn.html#ch7">查看第 7 章</a>
+          </article>
+        </div>
+
+        <div class="callout callout--info lab-next__callout u-mt5" role="note">
+          <svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/>
+          </svg>
+          <div>
+            <p class="callout__title">分类任务不是目标检测</p>
+            <p>这里不画检测框；轮廓模式只演示传统视觉的连通区域与面积过滤，不代表模型输出。PhoneVision 的模型做的是整张图的分类。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+            <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+              <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+              <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+              <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+            </svg>
+            <span class="brand__name">PhoneVision <span>Lab</span></span>
+          </a>
+          <p class="small u-mt3" style="max-width: 28ch">把闲置安卓手机变成采集设备与边缘推理终端的学习平台。</p>
+        </div>
+        <div>
+          <p class="footer__title">学习</p>
+          <a class="footer__link" href="learn.html">全部课程</a>
+          <a class="footer__link" href="lesson.html">从第一课开始</a>
+          <a class="footer__link" href="learn.html#ch3">图像处理</a>
+        </div>
+        <div>
+          <p class="footer__title">实践</p>
+          <a class="footer__link" href="lab.html">视觉实验台</a>
+          <a class="footer__link" href="projects.html">我的项目</a>
+          <a class="footer__link" href="lab.html#metrics">性能指标</a>
+        </div>
+        <div>
+          <p class="footer__title">关于</p>
+          <a class="footer__link" href="#" data-open-modal="help-modal">帮助与常见问题</a>
+          <a class="footer__link" href="#" data-open-modal="connect-modal">连接手机</a>
+          <span class="footer__link u-muted">本地运行 · 无账号 · 无云端</span>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year></span> PhoneVision Lab · 学习原型</span>
+        <span>页面中的画面、分类结果与性能数字均为示意，不代表真实测试。</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal" id="connect-modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">局域网连接</p>
+          <h2 class="modal__title" id="connect-title">连接你的旧手机</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <ol class="steps">
+          <li><strong>让两台设备连同一个 Wi-Fi。</strong>手机和电脑必须在同一局域网，不要用手机热点做桥接。</li>
+          <li><strong>在手机 App 里点「开始推流」。</strong>App 会在屏幕上显示本机地址，例如 192.168.2.14:8080。</li>
+          <li><strong>把地址填到下面。</strong>电脑会先请求 /ping 确认手机在线，再开始接收 MJPEG 画面。</li>
+        </ol>
+        <form class="stack u-mt5" data-connect-form novalidate>
+          <label class="field">
+            <span class="field__label">手机地址</span>
+            <input class="input input--mono" name="host" type="text" inputmode="decimal"
+                   placeholder="192.168.2.14" autocomplete="off" spellcheck="false">
+            <span class="field__hint">以手机 App 屏幕上显示的地址为准，不同 Wi-Fi 下会变。</span>
+          </label>
+          <label class="field">
+            <span class="field__label">端口</span>
+            <input class="input input--mono" name="port" type="text" inputmode="numeric" value="8080">
+          </label>
+          <div data-connect-result hidden></div>
+          <div class="modal__actions">
+            <button class="btn btn--primary" type="submit">检测并连接</button>
+            <a class="btn btn--ghost" href="lab.html">先看示意画面</a>
+          </div>
+          <p class="meta">原型说明：本页面没有网络层，不会真的连接设备，也不会保存地址。真实连接由桌面客户端完成。</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">帮助</p>
+          <h2 class="modal__title" id="help-title">常见问题</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body stack">
+        <div><p class="h3">连不上手机？</p><p class="small u-mt2">确认手机 App 已点「开始推流」、两台设备在同一 Wi-Fi、地址与 App 显示一致。电脑上可先访问 http://手机IP:8080/ping 验证。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">训练按钮是灰的？</p><p class="small u-mt2">训练需要独立的 Python 环境（requirements-train.txt）。便携包不内置 TensorFlow，请改用 start-training.cmd 启动。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">为什么 LED 没有真的亮？</p><p class="small u-mt2">ESP32 与 LED 的真机链路仍在验证中。电脑端只能确认到「已接收」，没有「已执行」回执时不会显示成功。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">数据存在哪里？</p><p class="small u-mt2">默认在本机 %LOCALAPPDATA%\PhoneVisionLab，不上传云端，也没有账号体系。</p></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

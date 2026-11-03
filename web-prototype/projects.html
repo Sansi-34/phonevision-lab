@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>我的项目 · PhoneVision Lab</title>
+  <meta name="description" content="本机数据集、训练记录与已导出模型的汇总页。原型阶段没有项目数据，所有内容都只保存在本机。">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/page-home.css">
+  <script defer src="assets/js/site.js"></script>
+</head>
+<body data-page="projects">
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<header class="nav">
+  <div class="nav__inner">
+    <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+      <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+        <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+        <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+        <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+        <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+        <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+      </svg>
+      <span class="brand__name">PhoneVision <span>Lab</span></span>
+    </a>
+    <nav class="nav__links" aria-label="主导航">
+      <a class="nav__link" data-nav="learn" href="learn.html">学习</a>
+      <a class="nav__link" data-nav="lab" href="lab.html">实验台</a>
+      <a class="nav__link" data-nav="projects" href="projects.html">我的项目</a>
+    </nav>
+    <div class="nav__right">
+      <span class="status">
+        <span class="status__dot" aria-hidden="true"></span>
+        手机未连接
+        <span class="status__sep" aria-hidden="true"></span>
+        <span class="status__detail">局域网</span>
+      </span>
+      <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+      <button class="nav__help" type="button" data-open-modal="help-modal" aria-label="帮助">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="page-head" aria-labelledby="projects-title">
+    <div class="container">
+      <div class="page-head__inner">
+        <div>
+          <p class="eyebrow">工作区</p>
+          <h1 class="display page-head__title" id="projects-title">我的项目</h1>
+          <p class="lead page-head__lead">这里汇总本机采集的数据集、训练记录与导出的模型；原型阶段还没有任何项目数据。</p>
+        </div>
+        <p class="meta page-head__aside">本机存储 · 无账号 · 不上传云端</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-section" aria-label="项目统计">
+    <div class="container">
+      <dl class="stats">
+        <div class="stats__item">
+          <dt class="stats__label">数据集</dt>
+          <dd class="stats__value">0</dd>
+        </div>
+        <div class="stats__item">
+          <dt class="stats__label">训练记录</dt>
+          <dd class="stats__value">0</dd>
+        </div>
+        <div class="stats__item">
+          <dt class="stats__label">模型包</dt>
+          <dd class="stats__value">0</dd>
+        </div>
+        <div class="stats__item">
+          <dt class="stats__label">最近实验</dt>
+          <dd class="stats__value stats__value--text">无</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="proj-grid">
+
+      <section class="proj-block" aria-labelledby="datasets-title">
+        <div class="proj-block__head">
+          <h2 class="h3" id="datasets-title">我的数据集</h2>
+          <span class="tag tag--plan">暂无</span>
+        </div>
+        <div class="empty">
+          <svg class="empty__art" viewBox="0 0 64 64" role="img" aria-labelledby="empty-dataset-title" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <title id="empty-dataset-title">空的数据集</title>
+            <ellipse cx="32" cy="16" rx="16" ry="6"/>
+            <path d="M16 16v14c0 3.3 7.2 6 16 6s16-2.7 16-6V16"/>
+            <path d="M16 30v14c0 3.3 7.2 6 16 6s16-2.7 16-6V30"/>
+          </svg>
+          <p class="empty__title">还没有数据集</p>
+          <p class="empty__desc">在实验台连接手机后，采集的画面会按批次存成本机数据集，不上传云端。</p>
+          <a class="btn btn--primary btn--sm" href="lab.html">去采集</a>
+        </div>
+      </section>
+
+      <section class="proj-block" aria-labelledby="training-title">
+        <div class="proj-block__head">
+          <h2 class="h3" id="training-title">训练记录</h2>
+          <span class="tag tag--plan">暂无</span>
+        </div>
+        <div class="empty">
+          <svg class="empty__art" viewBox="0 0 64 64" role="img" aria-labelledby="empty-training-title" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <title id="empty-training-title">空的训练记录</title>
+            <rect x="8" y="12" width="48" height="40" rx="3"/>
+            <path d="M16 20h12"/>
+            <path d="M16 44l9-10 7 5 10-14 6 4"/>
+          </svg>
+          <p class="empty__title">还没有训练记录</p>
+          <p class="empty__desc">训练需要独立的 Python 环境。完成一次训练后，准确率与轮次记录会出现在这里。</p>
+          <a class="btn btn--ghost btn--sm" href="learn.html#ch5">去训练</a>
+        </div>
+      </section>
+
+      <section class="proj-block" aria-labelledby="models-title">
+        <div class="proj-block__head">
+          <h2 class="h3" id="models-title">已导出的模型</h2>
+          <span class="tag tag--plan">暂无</span>
+        </div>
+        <div class="empty">
+          <svg class="empty__art" viewBox="0 0 64 64" role="img" aria-labelledby="empty-model-title" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <title id="empty-model-title">空的模型包列表</title>
+            <path d="M32 8 54 20v24L32 56 10 44V20z"/>
+            <path d="M10 20l22 12 22-12"/>
+            <path d="M32 32v24"/>
+          </svg>
+          <p class="empty__title">还没有导出的模型</p>
+          <p class="empty__desc">训练完成后可以把模型导出为 TFLite 包，再拷回手机做本机推理。</p>
+          <a class="btn btn--ghost btn--sm" href="learn.html">去看课程</a>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <section class="recent-section" aria-labelledby="recent-title">
+    <div class="container">
+      <div class="recent">
+        <div>
+          <p class="eyebrow">最近学习</p>
+          <h2 class="h3 recent__title" id="recent-title"><span class="recent__count" data-progress-count>0</span> 课已完成</h2>
+          <p class="small u-mt2" data-progress-empty>本机还没有学习记录，完成第一课后会在这里显示进度。</p>
+        </div>
+        <a class="btn btn--ghost" href="lesson.html">从第一课开始</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div>
+        <a class="brand" href="index.html">
+          <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+            <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+            <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+            <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+            <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+            <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+            <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+          </svg>
+          <span class="brand__name">PhoneVision <span>Lab</span></span>
+        </a>
+        <p class="small u-mt3" style="max-width: 28ch">把闲置安卓手机变成采集设备与边缘推理终端的学习平台。</p>
+      </div>
+      <div>
+        <p class="footer__title">学习</p>
+        <a class="footer__link" href="learn.html">全部课程</a>
+        <a class="footer__link" href="lesson.html">从第一课开始</a>
+        <a class="footer__link" href="learn.html#ch3">图像处理</a>
+      </div>
+      <div>
+        <p class="footer__title">实践</p>
+        <a class="footer__link" href="lab.html">视觉实验台</a>
+        <a class="footer__link" href="projects.html">我的项目</a>
+        <a class="footer__link" href="lab.html#metrics">性能指标</a>
+      </div>
+      <div>
+        <p class="footer__title">关于</p>
+        <a class="footer__link" href="#" data-open-modal="help-modal">帮助与常见问题</a>
+        <a class="footer__link" href="#" data-open-modal="connect-modal">连接手机</a>
+        <span class="footer__link u-muted">本地运行 · 无账号 · 无云端</span>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© <span data-year></span> PhoneVision Lab · 学习原型</span>
+      <span>页面中的画面、分类结果与性能数字均为示意，不代表真实测试。</span>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="connect-modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <div>
+        <p class="eyebrow eyebrow--plain">局域网连接</p>
+        <h2 class="modal__title" id="connect-title">连接你的旧手机</h2>
+      </div>
+      <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <ol class="steps">
+        <li><strong>让两台设备连同一个 Wi-Fi。</strong>手机和电脑必须在同一局域网，不要用手机热点做桥接。</li>
+        <li><strong>在手机 App 里点「开始推流」。</strong>App 会在屏幕上显示本机地址，例如 192.168.2.14:8080。</li>
+        <li><strong>把地址填到下面。</strong>电脑会先请求 /ping 确认手机在线，再开始接收 MJPEG 画面。</li>
+      </ol>
+      <form class="stack u-mt5" data-connect-form novalidate>
+        <label class="field">
+          <span class="field__label">手机地址</span>
+          <input class="input input--mono" name="host" type="text" inputmode="decimal"
+                 placeholder="192.168.2.14" autocomplete="off" spellcheck="false">
+          <span class="field__hint">以手机 App 屏幕上显示的地址为准，不同 Wi-Fi 下会变。</span>
+        </label>
+        <label class="field">
+          <span class="field__label">端口</span>
+          <input class="input input--mono" name="port" type="text" inputmode="numeric" value="8080">
+        </label>
+        <div data-connect-result hidden></div>
+        <div class="modal__actions">
+          <button class="btn btn--primary" type="submit">检测并连接</button>
+          <a class="btn btn--ghost" href="lab.html">先看示意画面</a>
+        </div>
+        <p class="meta">原型说明：本页面没有网络层，不会真的连接设备，也不会保存地址。真实连接由桌面客户端完成。</p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="modal__panel">
+    <div class="modal__head">
+      <div>
+        <p class="eyebrow eyebrow--plain">帮助</p>
+        <h2 class="modal__title" id="help-title">常见问题</h2>
+      </div>
+      <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="modal__body stack">
+      <div><p class="h3">连不上手机？</p><p class="small u-mt2">确认手机 App 已点「开始推流」、两台设备在同一 Wi-Fi、地址与 App 显示一致。电脑上可先访问 http://手机IP:8080/ping 验证。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">训练按钮是灰的？</p><p class="small u-mt2">训练需要独立的 Python 环境（requirements-train.txt）。便携包不内置 TensorFlow，请改用 start-training.cmd 启动。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">为什么 LED 没有真的亮？</p><p class="small u-mt2">ESP32 与 LED 的真机链路仍在验证中。电脑端只能确认到「已接收」，没有「已执行」回执时不会显示成功。</p></div>
+      <hr class="hairline">
+      <div><p class="h3">数据存在哪里？</p><p class="small u-mt2">默认在本机 %LOCALAPPDATA%\PhoneVisionLab，不上传云端，也没有账号体系。</p></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

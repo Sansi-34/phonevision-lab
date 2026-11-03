@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图像是数字组成的 · PhoneVision Lab</title>
+  <meta name="description" content="PhoneVision Lab 课程样例：理解灰度图的数字表格、RGB 三个通道，以及分辨率如何影响手机采集。">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/page-learn.css">
+  <script defer src="assets/js/site.js"></script>
+</head>
+<body data-page="lesson">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="index.html" aria-label="PhoneVision Lab 首页">
+        <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+          <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+          <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+          <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+          <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+          <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+        </svg>
+        <span class="brand__name">PhoneVision <span>Lab</span></span>
+      </a>
+      <nav class="nav__links" aria-label="主导航">
+        <a class="nav__link" data-nav="learn" href="learn.html">学习</a>
+        <a class="nav__link" data-nav="lab" href="lab.html">实验台</a>
+        <a class="nav__link" data-nav="projects" href="projects.html">我的项目</a>
+      </nav>
+      <div class="nav__right">
+        <span class="status">
+          <span class="status__dot" aria-hidden="true"></span>
+          手机未连接
+          <span class="status__sep" aria-hidden="true"></span>
+          <span class="status__detail">局域网</span>
+        </span>
+        <button class="btn btn--primary btn--sm" type="button" data-open-modal="connect-modal">连接手机</button>
+        <button class="nav__help" type="button" data-open-modal="help-modal" aria-label="帮助">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.3 1-1.3 1.9"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="lesson-main">
+    <div class="container">
+      <a class="lesson-back" href="learn.html"><span aria-hidden="true">←</span> 返回课程列表</a>
+
+      <div class="lesson-layout">
+        <div class="lesson-side">
+          <nav class="toc" aria-label="第 1 章目录">
+            <p class="toc__title">第 1 章 · 认识视觉 AI</p>
+            <ol class="toc__list">
+              <li>
+                <a class="toc__link" href="lesson.html">
+                  <span class="toc__num">1.1</span>
+                  <span>什么是计算机视觉</span>
+                </a>
+              </li>
+              <li>
+                <a class="toc__link" href="lesson.html" aria-current="page">
+                  <span class="toc__num">1.2</span>
+                  <span>图像是数字组成的 <span class="toc__current">当前</span></span>
+                </a>
+              </li>
+              <li>
+                <a class="toc__link" href="lesson.html">
+                  <span class="toc__num">1.3</span>
+                  <span>旧手机能做什么</span>
+                </a>
+              </li>
+            </ol>
+            <p class="toc__note">本机进度只记录在这台设备的浏览器里。原型目前只提供本课的完整页面，其余课程沿用同一版式。</p>
+          </nav>
+
+          <details class="toc-mobile">
+            <summary>本章目录 · 第 1 章 3 课</summary>
+            <ol class="toc__list">
+              <li>
+                <a class="toc__link" href="lesson.html">
+                  <span class="toc__num">1.1</span>
+                  <span>什么是计算机视觉</span>
+                </a>
+              </li>
+              <li>
+                <a class="toc__link" href="lesson.html" aria-current="page">
+                  <span class="toc__num">1.2</span>
+                  <span>图像是数字组成的 <span class="toc__current">当前</span></span>
+                </a>
+              </li>
+              <li>
+                <a class="toc__link" href="lesson.html">
+                  <span class="toc__num">1.3</span>
+                  <span>旧手机能做什么</span>
+                </a>
+              </li>
+            </ol>
+          </details>
+        </div>
+
+        <article class="lesson-article">
+          <header class="lesson-header">
+            <p class="eyebrow">第一部分 · 第 2 课</p>
+            <h1 class="h1 lesson-title">图像是数字组成的</h1>
+            <p class="lesson-deck">手机拍下的一张照片，在电脑看来只是一串 0 到 255 之间的整数。理解这串数字怎么排列，才知道后面每一步处理究竟在改什么。</p>
+            <p class="lesson-meta">
+              <span>第 1 章 · 认识视觉 AI</span>
+              <span aria-hidden="true">·</span>
+              <span>预计 8 分钟</span>
+              <span aria-hidden="true">·</span>
+              <span>知识课</span>
+            </p>
+          </header>
+
+          <section class="lesson-goals" aria-labelledby="goals-title">
+            <h2 class="lesson-goals__title" id="goals-title">学习目标</h2>
+            <ol class="goal-list">
+              <li>说清一张灰度图在内存里按行、按列排列的方式。</li>
+              <li>区分 RGB 三个通道，理解一个彩色像素为什么由三个数字组成。</li>
+              <li>判断分辨率变化对采集画面与处理开销的影响。</li>
+            </ol>
+          </section>
+
+          <section class="lesson-section" id="s1" aria-labelledby="s1-title">
+            <p class="lesson-section__kicker">01</p>
+            <h2 class="h2 lesson-section__title" id="s1-title">图像是一张数字表格</h2>
+            <p>把一张灰度图放大到能看见单个格子，你会得到一张表格：每一格是一个像素，格子里写着一个 0 到 255 的整数。0 是黑，255 是白，中间是从暗到亮的灰。</p>
+            <p>计算机不保存「这是一只杯子」这样的描述，它保存的是这张表格。显示时，程序按行列顺序读出每个数字，再把它映射回屏幕上的亮度。行和列的顺序不能乱，因为位置本身就是信息。</p>
+            <p>一张 640 × 480 的灰度图有 640 列、480 行，共 307,200 个数字。每个数字占 1 个字节，所以这张图仅灰度数据就约 300 KB。同样的尺寸换成彩色，数据量还要再乘以三。</p>
+
+            <figure class="lesson-figure">
+              <svg viewBox="0 0 600 270" role="img" aria-labelledby="fig1-title">
+                <title id="fig1-title">示意图：一张 6×6 的灰度图，放大其中一个 3×3 区域后每个格子对应一个 0 到 255 的灰度值</title>
+                <text x="40" y="24" font-size="20" fill="#3D4759">6 × 6 灰度图</text>
+                <g stroke="#FBF8F2" stroke-width="1">
+                  <rect x="40" y="34" width="32" height="32" fill="#ECECEC"/><rect x="72" y="34" width="32" height="32" fill="#ECECEC"/><rect x="104" y="34" width="32" height="32" fill="#ECECEC"/><rect x="136" y="34" width="32" height="32" fill="#ECECEC"/><rect x="168" y="34" width="32" height="32" fill="#404040"/><rect x="200" y="34" width="32" height="32" fill="#404040"/>
+                  <rect x="40" y="66" width="32" height="32" fill="#ECECEC"/><rect x="72" y="66" width="32" height="32" fill="#ECECEC"/><rect x="104" y="66" width="32" height="32" fill="#ECECEC"/><rect x="136" y="66" width="32" height="32" fill="#404040"/><rect x="168" y="66" width="32" height="32" fill="#404040"/><rect x="200" y="66" width="32" height="32" fill="#404040"/>
+                  <rect x="40" y="98" width="32" height="32" fill="#ECECEC"/><rect x="72" y="98" width="32" height="32" fill="#ECECEC"/><rect x="104" y="98" width="32" height="32" fill="#404040"/><rect x="136" y="98" width="32" height="32" fill="#404040"/><rect x="168" y="98" width="32" height="32" fill="#404040"/><rect x="200" y="98" width="32" height="32" fill="#404040"/>
+                  <rect x="40" y="130" width="32" height="32" fill="#ECECEC"/><rect x="72" y="130" width="32" height="32" fill="#404040"/><rect x="104" y="130" width="32" height="32" fill="#404040"/><rect x="136" y="130" width="32" height="32" fill="#404040"/><rect x="168" y="130" width="32" height="32" fill="#404040"/><rect x="200" y="130" width="32" height="32" fill="#404040"/>
+                  <rect x="40" y="162" width="32" height="32" fill="#404040"/><rect x="72" y="162" width="32" height="32" fill="#404040"/><rect x="104" y="162" width="32" height="32" fill="#404040"/><rect x="136" y="162" width="32" height="32" fill="#404040"/><rect x="168" y="162" width="32" height="32" fill="#404040"/><rect x="200" y="162" width="32" height="32" fill="#404040"/>
+                  <rect x="40" y="194" width="32" height="32" fill="#404040"/><rect x="72" y="194" width="32" height="32" fill="#404040"/><rect x="104" y="194" width="32" height="32" fill="#404040"/><rect x="136" y="194" width="32" height="32" fill="#404040"/><rect x="168" y="194" width="32" height="32" fill="#404040"/><rect x="200" y="194" width="32" height="32" fill="#404040"/>
+                </g>
+                <rect x="104" y="34" width="96" height="96" fill="none" stroke="#1F4BE0" stroke-width="2"/>
+                <text x="40" y="250" font-size="18" fill="#6E7686">共 36 个像素</text>
+
+                <path d="M250 82 H286" fill="none" stroke="#6E7686" stroke-width="1.5"/>
+                <path d="M280 76 L286 82 L280 88" fill="none" stroke="#6E7686" stroke-width="1.5"/>
+                <text x="250" y="106" font-size="17" fill="#6E7686">放大</text>
+
+                <text x="310" y="24" font-size="20" fill="#3D4759">一个 3 × 3 区域</text>
+                <g stroke="#FBF8F2" stroke-width="1.5">
+                  <rect x="310" y="34" width="56" height="56" fill="#ECECEC"/><rect x="366" y="34" width="56" height="56" fill="#ECECEC"/><rect x="422" y="34" width="56" height="56" fill="#404040"/>
+                  <rect x="310" y="90" width="56" height="56" fill="#ECECEC"/><rect x="366" y="90" width="56" height="56" fill="#404040"/><rect x="422" y="90" width="56" height="56" fill="#404040"/>
+                  <rect x="310" y="146" width="56" height="56" fill="#404040"/><rect x="366" y="146" width="56" height="56" fill="#404040"/><rect x="422" y="146" width="56" height="56" fill="#404040"/>
+                </g>
+                <g font-size="22" text-anchor="middle" font-family="Consolas, monospace">
+                  <text x="338" y="69" fill="#14203A">236</text><text x="394" y="69" fill="#14203A">236</text><text x="450" y="69" fill="#FBF8F2">64</text>
+                  <text x="338" y="125" fill="#14203A">236</text><text x="394" y="125" fill="#FBF8F2">64</text><text x="450" y="125" fill="#FBF8F2">64</text>
+                  <text x="338" y="181" fill="#FBF8F2">64</text><text x="394" y="181" fill="#FBF8F2">64</text><text x="450" y="181" fill="#FBF8F2">64</text>
+                </g>
+                <text x="310" y="226" font-size="18" fill="#6E7686">每格 = 一个像素的灰度值</text>
+                <text x="310" y="248" font-size="18" fill="#6E7686">0 = 黑，255 = 白</text>
+              </svg>
+              <figcaption>示意图：像素值 236 偏白，64 偏黑；放大只是把同样的数字画得更大，不改变数据。</figcaption>
+            </figure>
+          </section>
+
+          <section class="lesson-section" id="s2" aria-labelledby="s2-title">
+            <p class="lesson-section__kicker">02</p>
+            <h2 class="h2 lesson-section__title" id="s2-title">三个通道 RGB</h2>
+            <p>彩色图像通常存成三个通道：红、绿、蓝。每个像素不再是一个数字，而是三个数字一组，分别表示三个通道的亮度。三个通道叠在一起，才得到你看到的颜色。</p>
+            <p>例如 (214, 92, 64) 表示红分量较高、绿与蓝较低，看上去是偏橙的红。把三个数字都设为相等，颜色就变成灰色；三个都为 0 是黑，都为 255 是白。</p>
+            <p>这也是很多视觉算法先把图转成灰度的原因：每个像素要读的数从三个变成一个，后续计算随之减少。代价是颜色本身的信息被丢掉了，所以「按颜色分割」这类任务不能先转灰度。</p>
+
+            <figure class="lesson-figure">
+              <svg viewBox="0 0 600 280" role="img" aria-labelledby="fig2-title">
+                <title id="fig2-title">示意图：一个像素的红绿蓝三个通道值 214、92、64 合成为偏橙的红色</title>
+                <text x="40" y="24" font-size="20" fill="#3D4759">一个彩色像素 = 三个通道值</text>
+                <line x1="40" y1="220" x2="390" y2="220" stroke="#E5DFD3"/>
+                <rect x="56" y="77" width="72" height="143" fill="#B4362F"/>
+                <rect x="176" y="159" width="72" height="61" fill="#2F7D57"/>
+                <rect x="296" y="177" width="72" height="43" fill="#1F4BE0"/>
+                <g font-size="22" text-anchor="middle" fill="#14203A" font-family="Consolas, monospace">
+                  <text x="92" y="67">214</text>
+                  <text x="212" y="149">92</text>
+                  <text x="332" y="167">64</text>
+                </g>
+                <g font-size="18" text-anchor="middle" fill="#3D4759">
+                  <text x="92" y="244">R 红</text>
+                  <text x="212" y="244">G 绿</text>
+                  <text x="332" y="244">B 蓝</text>
+                </g>
+                <path d="M400 125 H430" fill="none" stroke="#6E7686" stroke-width="1.5"/>
+                <path d="M424 119 L430 125 L424 131" fill="none" stroke="#6E7686" stroke-width="1.5"/>
+                <text x="440" y="50" font-size="20" fill="#3D4759">合成颜色</text>
+                <rect x="440" y="68" width="112" height="112" fill="#D65C40" stroke="#E5DFD3"/>
+                <text x="440" y="204" font-size="18" fill="#6E7686" font-family="Consolas, monospace">≈ #D65C40</text>
+                <text x="40" y="270" font-size="17" fill="#6E7686">三个数字都在 0–255 之间；数值只是示例，不是你的摄像头数据。</text>
+              </svg>
+              <figcaption>示意图：红、绿、蓝三个通道值共同决定一个像素的颜色；改变任一通道，颜色就会变。</figcaption>
+            </figure>
+          </section>
+
+          <section class="lesson-section" id="s3" aria-labelledby="s3-title">
+            <p class="lesson-section__kicker">03</p>
+            <h2 class="h2 lesson-section__title" id="s3-title">分辨率如何影响采集</h2>
+            <p>分辨率是画面的宽和高，单位是像素。手机摄像头常见的 1280 × 720，意味着一帧有 921,600 个像素；640 × 480 只有 307,200 个。像素越多，画面越细，但每帧要传输和计算的数据也越多。</p>
+            <p>局域网 MJPEG 推流是把一帧一帧的 JPEG 图片连续发到电脑。分辨率提高，单帧变大，在同样的网络与解码能力下，能到达的帧率通常会降低。这不是手机「性能差」，而是数据量变了。</p>
+            <p>桌面端做处理时也一样：对 1280 × 720 做一次边缘检测，计算量大约是 640 × 480 的三倍。实验时可以先从中等分辨率开始，确认链路稳定，再往上加。</p>
+
+            <figure class="lesson-figure">
+              <svg viewBox="0 0 600 250" role="img" aria-labelledby="fig3-title">
+                <title id="fig3-title">示意图：320×240、640×480、1280×720 三种分辨率的单帧像素数对比，分别为 7.68 万、30.72 万和 92.16 万</title>
+                <text x="40" y="24" font-size="20" fill="#3D4759">一帧画面的像素数</text>
+                <line x1="230" y1="44" x2="230" y2="232" stroke="#D2CBBD"/>
+
+                <text x="40" y="68" font-size="20" fill="#14203A">320 × 240</text>
+                <text x="40" y="88" font-size="18" fill="#6E7686">7.68 万像素</text>
+                <rect x="230" y="48" width="27.5" height="44" fill="#1F4BE0"/>
+
+                <text x="40" y="132" font-size="20" fill="#14203A">640 × 480</text>
+                <text x="40" y="152" font-size="18" fill="#6E7686">30.72 万像素</text>
+                <rect x="230" y="112" width="110" height="44" fill="#1F4BE0"/>
+
+                <text x="40" y="196" font-size="20" fill="#14203A">1280 × 720</text>
+                <text x="40" y="216" font-size="18" fill="#6E7686">92.16 万像素</text>
+                <rect x="230" y="176" width="330" height="44" fill="#1F4BE0"/>
+
+                <text x="230" y="244" font-size="16" fill="#9AA0AC">单帧像素数，条形长度按实际比例绘制</text>
+              </svg>
+              <figcaption>示意图：像素数按宽 × 高计算；分辨率提高后每帧数据变大，传输与处理都更费时。</figcaption>
+            </figure>
+          </section>
+
+          <div class="callout callout--info lesson-callout">
+            <svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/></svg>
+            <div>
+              <p class="callout__title">动手试试</p>
+              <p>去实验台把示意画面切成灰度、看一次边缘，再调整 Canny 阈值观察结果如何变化。原型只使用内置示意画面，不会读取你的摄像头，也不会连接手机。</p>
+              <p class="u-mt2"><a class="link" href="lab.html">打开视觉实验台</a></p>
+            </div>
+          </div>
+
+          <div class="callout callout--warn lesson-callout">
+            <svg class="callout__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3.6 21 20H3Z"/><path d="M12 9v5"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/></svg>
+            <div>
+              <p class="callout__title">示例像素值仅用于讲解</p>
+              <p>本页的像素矩阵、通道数值与分辨率对比都是示意图，不是你的摄像头数据，也不来自任何真实设备采样。实际采集到的数值取决于光线、传感器与压缩。</p>
+            </div>
+          </div>
+
+          <div class="lesson-actions">
+            <button class="btn btn--primary" type="button" data-mark-complete="c1-2">标记本课完成</button>
+            <p class="meta">状态保存在本机浏览器（localStorage），不会上传，也不会同步到其他设备。</p>
+          </div>
+
+          <nav class="lesson-nav" aria-label="课程导航">
+            <a class="lesson-nav__item" href="lesson.html">
+              <span class="lesson-nav__dir">← 上一课</span>
+              <span class="lesson-nav__title">什么是计算机视觉</span>
+              <span class="lesson-nav__meta">第 1 课 · 知识</span>
+            </a>
+            <a class="lesson-nav__item lesson-nav__item--next" href="lesson.html">
+              <span class="lesson-nav__dir">下一课 →</span>
+              <span class="lesson-nav__title">旧手机能做什么</span>
+              <span class="lesson-nav__meta">第 3 课 · 知识</span>
+            </a>
+          </nav>
+          <p class="small lesson-nav__note">原型说明：目前只有本课提供完整页面，上一课与下一课暂时回到同一版式；全部课程见学习中心。</p>
+        </article>
+
+        <aside class="lesson-aside" aria-label="本课信息">
+          <div class="aside-block">
+            <p class="aside-block__title">本节要点</p>
+            <ol class="aside-points">
+              <li>灰度图是一个按行列排列的 0–255 数字表格。</li>
+              <li>彩色像素由红、绿、蓝三个通道值组成。</li>
+              <li>分辨率越高，单帧数据越大，传输与处理越慢。</li>
+            </ol>
+          </div>
+          <div class="aside-block">
+            <p class="aside-block__title">相关实验</p>
+            <a class="aside-card-link" href="lab.html">
+              <span class="aside-card-link__name">灰度与边缘</span>
+              <span class="aside-card-link__desc">在实验台切换灰度、Canny 与 HSV，观察同一帧画面经过处理后的变化。</span>
+              <span class="aside-card-link__action">去视觉实验台 →</span>
+            </a>
+          </div>
+          <div class="aside-block">
+            <p class="aside-block__title">阅读信息</p>
+            <dl class="aside-facts">
+              <div><dt>预计时长</dt><dd>8 分钟</dd></div>
+              <div><dt>所属章节</dt><dd>第 1 章 · 3 课</dd></div>
+              <div><dt>课程类型</dt><dd>知识</dd></div>
+            </dl>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <a class="brand" href="index.html">
+            <svg class="brand__mark" viewBox="0 0 26 26" aria-hidden="true">
+              <rect x="1" y="1" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="1" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+              <rect x="18" y="1" width="7" height="7" rx="1.6" fill="#D6E1FB"/>
+              <rect x="1" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="9.5" y="9.5" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="9.5" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="1" y="18" width="7" height="7" rx="1.6" fill="#E5DFD3"/>
+              <rect x="9.5" y="18" width="7" height="7" rx="1.6" fill="#14203A"/>
+              <rect x="18" y="18" width="7" height="7" rx="1.6" fill="#1F4BE0"/>
+            </svg>
+          </a>
+          <p class="small u-mt3" style="max-width: 28ch">把闲置安卓手机变成采集设备与边缘推理终端的学习平台。</p>
+        </div>
+        <div>
+          <p class="footer__title">学习</p>
+          <a class="footer__link" href="learn.html">全部课程</a>
+          <a class="footer__link" href="lesson.html">从第一课开始</a>
+          <a class="footer__link" href="learn.html#ch3">图像处理</a>
+        </div>
+        <div>
+          <p class="footer__title">实践</p>
+          <a class="footer__link" href="lab.html">视觉实验台</a>
+          <a class="footer__link" href="projects.html">我的项目</a>
+          <a class="footer__link" href="lab.html#metrics">性能指标</a>
+        </div>
+        <div>
+          <p class="footer__title">关于</p>
+          <a class="footer__link" href="#" data-open-modal="help-modal">帮助与常见问题</a>
+          <a class="footer__link" href="#" data-open-modal="connect-modal">连接手机</a>
+          <span class="footer__link u-muted">本地运行 · 无账号 · 无云端</span>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span data-year></span> PhoneVision Lab · 学习原型</span>
+        <span>页面中的画面、分类结果与性能数字均为示意，不代表真实测试。</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal" id="connect-modal" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">局域网连接</p>
+          <h2 class="modal__title" id="connect-title">连接你的旧手机</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <ol class="steps">
+          <li><strong>让两台设备连同一个 Wi-Fi。</strong>手机和电脑必须在同一局域网，不要用手机热点做桥接。</li>
+          <li><strong>在手机 App 里点「开始推流」。</strong>App 会在屏幕上显示本机地址，例如 192.168.2.14:8080。</li>
+          <li><strong>把地址填到下面。</strong>电脑会先请求 /ping 确认手机在线，再开始接收 MJPEG 画面。</li>
+        </ol>
+        <form class="stack u-mt5" data-connect-form novalidate>
+          <label class="field">
+            <span class="field__label">手机地址</span>
+            <input class="input input--mono" name="host" type="text" inputmode="decimal"
+                   placeholder="192.168.2.14" autocomplete="off" spellcheck="false">
+            <span class="field__hint">以手机 App 屏幕上显示的地址为准，不同 Wi-Fi 下会变。</span>
+          </label>
+          <label class="field">
+            <span class="field__label">端口</span>
+            <input class="input input--mono" name="port" type="text" inputmode="numeric" value="8080">
+          </label>
+          <div data-connect-result hidden></div>
+          <div class="modal__actions">
+            <button class="btn btn--primary" type="submit">检测并连接</button>
+            <a class="btn btn--ghost" href="lab.html">先看示意画面</a>
+          </div>
+          <p class="meta">原型说明：本页面没有网络层，不会真的连接设备，也不会保存地址。真实连接由桌面客户端完成。</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div>
+          <p class="eyebrow eyebrow--plain">帮助</p>
+          <h2 class="modal__title" id="help-title">常见问题</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-modal aria-label="关闭">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal__body stack">
+        <div><p class="h3">连不上手机？</p><p class="small u-mt2">确认手机 App 已点「开始推流」、两台设备在同一 Wi-Fi、地址与 App 显示一致。电脑上可先访问 http://手机IP:8080/ping 验证。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">训练按钮是灰的？</p><p class="small u-mt2">训练需要独立的 Python 环境（requirements-train.txt）。便携包不内置 TensorFlow，请改用 start-training.cmd 启动。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">为什么 LED 没有真的亮？</p><p class="small u-mt2">ESP32 与 LED 的真机链路仍在验证中。电脑端只能确认到「已接收」，没有「已执行」回执时不会显示成功。</p></div>
+        <hr class="hairline">
+        <div><p class="h3">数据存在哪里？</p><p class="small u-mt2">默认在本机 %LOCALAPPDATA%\PhoneVisionLab，不上传云端，也没有账号体系。</p></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
