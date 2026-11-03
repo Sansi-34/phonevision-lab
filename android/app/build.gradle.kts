@@ -93,7 +93,16 @@ dependencies {
     // 轻量嵌入式 HTTP 服务器：负责 /ping 与 /stream 两个接口。
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
+    // TensorFlow Lite：本机 AI 推理（V0-B）。
+    // 版本 2.16.1 的 AAR minSdk=19，兼容本项目 minSdk 21（旧手机目标）。
+    // 默认只用 CPU（见 Config.USE_NNAPI=false），不依赖 GPU/NPU 加速。
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+
     testImplementation("junit:junit:4.13.2")
+    // androidTest：真机仪器测试（推理引擎 / 模型导入 / 控制协议 / 预处理一致性）。
+    // ActivityScenario 由 androidx.test:core 提供；该依赖已通过
+    // androidx.test.ext:junit 与 espresso-core 传递引入，无需再显式声明，
+    // 避免为一个传递依赖新增一条需要额外仓库解析的声明。
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }

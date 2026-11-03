@@ -24,6 +24,7 @@
 
     <application
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -41,6 +42,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          V0-B：本机 AI 推理界面。
+          与推流模式互斥（同一时刻只用一种），从主界面的模式选择进入。
+          exported=false：只在本 App 内启动，不接受外部 Intent。
+        -->
+        <activity
+            android:name=".InferenceActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.PhoneVisionLab" />
     </application>
 
 </manifest>

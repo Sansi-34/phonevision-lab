@@ -55,4 +55,12 @@
             android:text="停止推流" />
     </LinearLayout>
 
+    <!-- V0-B：模式切换入口（与推流互斥，点此进入本机 AI 推理） -->
+    <Button
+        android:id="@+id/inferenceModeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="本机 AI 推理（导入模型）" />
+
 </LinearLayout>

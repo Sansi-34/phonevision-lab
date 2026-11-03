@@ -1,5 +1,6 @@
 package com.phonevisionlab.app
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.Condition
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -52,22 +53,43 @@ class LatestFrameStore {
     }
 
     /**
-     * 读取“比 fromSeq 更新的一帧”；若尚未产生更新帧则阻塞等待。
+     * 读取“比 fromSeq 更新的一帧”；若尚未产生更新帧则最多等待 timeoutMs 毫秒。
      *
-     * @param fromSeq 调用方已读过的最大序号；初次调用传 -1 表示“我什么也没读过”
-     * @return 更新的帧；若被中断则返回 null（服务端应在调用处捕获中断并停止发送）
+     * 为什么必须带超时：/stream 的读线程会长期停在这里，而 NanoHTTPD.stop() 只关闭
+     * socket，不会（也无法）唤醒 await()。带超时的等待让读线程周期性回到调用方，
+     * 由调用方检查“服务是否已关闭”后主动退出，线程才不会永久挂着。
+     *
+     * @param fromSeq   调用方已读过的最大序号；初次调用传 -1 表示“我什么也没读过”
+     * @param timeoutMs 最长等待毫秒数；<= 0 表示只做一次非阻塞检查
+     * @return 更新的帧；等待超时且仍无新帧时返回 null（调用方据此检查退出条件）
      */
     @Throws(InterruptedException::class)
-    fun getAfter(fromSeq: Long): Frame? {
+    fun getAfter(fromSeq: Long, timeoutMs: Long): Frame? {
         lock.withLock {
-            var f = frame
-            // 当最新帧序号仍未超过 fromSeq 时，说明没有“新的”一帧，等待。
-            while (f == null || f.seq <= fromSeq) {
-                updated.await()
-                f = frame
+            // awaitNanos 可能被 signalAll() 或虚假唤醒提前返回，
+            // 所以按“剩余时间”循环累减，直到真的超时。
+            var remainingNs = TimeUnit.MILLISECONDS.toNanos(if (timeoutMs > 0L) timeoutMs else 0L)
+            while (remainingNs > 0L) {
+                val f = frame
+                // 当最新帧序号仍未超过 fromSeq 时，说明没有“新的”一帧，继续等待。
+                if (f != null && f.seq > fromSeq) return f
+                remainingNs = updated.awaitNanos(remainingNs)
             }
-            return f
+            // 等待结束（超时）：再非阻塞地检查一次，避免“刚好在最后一轮写入”被漏掉。
+            val f = frame
+            return if (f != null && f.seq > fromSeq) f else null
         }
+    }
+
+    /**
+     * 唤醒所有正阻塞在 [getAfter] 上的读方，但不改变帧缓存内容。
+     *
+     * 用途：服务停止时先“叫醒”读线程，读方从 [getAfter] 拿到 null 后立刻
+     * 检查“服务是否已关闭”并退出。之所以和 [clear] 分开：clear() 会丢帧并推进序号，
+     * 这里只负责唤醒，不改变数据本身。
+     */
+    fun wakeAll() {
+        lock.withLock { updated.signalAll() }
     }
 
     /** 当前最新帧序号；未推流时返回 -1 */
@@ -78,8 +100,11 @@ class LatestFrameStore {
      *   - 丢掉旧帧引用（内存可回收）；
      *   - 序号推进一格，即使随后快速重启推流，新帧序号也不会回退，
      *     避免仍在等待的读取方误读旧帧。
-     * 说明：等待中的读取方被唤醒后看到 frame 为 null 会继续等待，
-     * 但由于调用方会随之停止 HTTP 服务器，这些连接会被关闭，不会一直阻塞。
+     * 重要：等待中的读取方被唤醒后看到 frame 为 null，只会**继续等待**，
+     * 并不会因为调用方随后停止 HTTP 服务器就返回——NanoHTTPD.stop() 只关闭 socket，
+     * 关不掉一个阻塞在 Condition 上的线程。所以停止流程必须自己让读方退出：
+     * 先 [wakeAll] 唤醒，再由读方检查“服务已关闭”标志后返回
+     * （见 MjpegServer.FrameInputStream）。否则读线程会永久阻塞、每次停止泄漏一条线程。
      */
     fun clear() {
         lock.withLock {

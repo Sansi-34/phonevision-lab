@@ -1,6 +1,7 @@
 package com.phonevisionlab.app
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCaptureSession
@@ -55,8 +56,26 @@ class CameraController(
     /** 状态接口：UI 层据此切换按钮与文案 */
     enum class State { IDLE, STARTING, STREAMING, ERROR }
 
-    /** 通知 UI 状态变化；来自相机线程 */
+    /** 通知 UI 状态变化；来自相机线程，UI 线程随时可能读/写这个引用 -> @Volatile */
+    @Volatile
     var onStateChanged: ((State, String?) -> Unit)? = null
+
+    /**
+     * 帧回调（V0-B 本机推理用）。
+     *
+     * 为什么加这个：推理需要"当前这一帧的 Bitmap"，而 MJPEG 推流拿的是 JPEG
+     * 字节。让 CameraController 在同一帧上额外提供一个 Bitmap 回调，
+     * 推理与推流就能共用同一次采集，不用开第二路相机（旧手机开两路相机
+     * 往往直接失败）。
+     *
+     * 回调在相机线程执行，实现方必须自己切线程，且不得做耗时操作
+     * （否则会拖慢采集帧率）。
+     *
+     * UI 线程在 start/stop 时读写这个引用，相机线程在读，所以必须 @Volatile，
+     * 否则停止后相机线程可能仍看到旧的非空回调（或反之）。
+     */
+    @Volatile
+    var onFrameBitmap: ((Bitmap) -> Unit)? = null
 
     // ---- 相机资源 ----
     private var cameraManager: CameraManager? = null
@@ -64,11 +83,37 @@ class CameraController(
     private var captureSession: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
 
+    /**
+     * 预览用 Surface（包住 TextureView 的 SurfaceTexture）。
+     *
+     * 为什么存字段：每次 start() 都会新建一个 Surface，而 Surface 持有原生缓冲，
+     * 不 release() 就是每次启停泄漏一个。存下来才能由 [stopCamera] 统一 release 并置空。
+     */
+    @Volatile
+    private var previewSurface: Surface? = null
+
     // ---- 线程 ----
     private var cameraThread: HandlerThread? = null
     private var cameraHandler: Handler? = null
 
     // ---- 运行状态 ----
+
+    /**
+     * 启动代次：每次 start() / stop() / fail() 自增。
+     *
+     * 为什么需要：Camera2 的 openCamera / createCaptureSession 回调是异步的，
+     * stop() 之后仍可能有迟到的回调到达。回调闭包捕获启动时的代次，执行时与
+     * 当前代次比对；不一致说明"这次启动已经作废"，只能关掉自己拿到的资源，
+     * 绝不写 captureSession / info.isStreaming / 状态回调这些共享状态，
+     * 否则会把下一次 start() 的会话覆盖掉（UI 显示推流中但没有任何帧）。
+     *
+     * 只在 UI 线程（start/stop）自增，相机线程只读，@Volatile 保证可见性。
+     */
+    @Volatile
+    private var generation = 0
+
+    /** 是否已启动；UI 线程会读，相机线程会写 -> @Volatile */
+    @Volatile
     private var isStreaming = false
 
     /** 记录上一帧到达时间，用于测真实帧率 */
@@ -161,11 +206,17 @@ class CameraController(
     fun start(onReady: () -> Unit) {
         if (isStreaming) return
         isStreaming = true
+        // 先推进代次：此后所有旧回调都失效
+        val gen = ++generation
         postState(State.STARTING, null)
 
         cameraThread = HandlerThread("CameraThread").also { it.start() }
         cameraHandler = Handler(cameraThread!!.looper)
         cameraHandler!!.post {
+            val handler = cameraHandler
+            // 排队期间已经 stop()（或被下一次 start() 取代）：本次启动作废，
+            // 不创建任何资源，也不碰共享状态。
+            if (gen != generation || handler == null) return@post
             try {
                 val cm = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
                 cameraManager = cm
@@ -187,19 +238,30 @@ class CameraController(
                     return@post
                 }
                 surfaceTexture.setDefaultBufferSize(info.width, info.height)
-                val previewSurface = Surface(surfaceTexture)
+                // 存字段：stopCamera() 负责 release，避免每次启停泄漏一个 Surface
+                val surface = Surface(surfaceTexture)
+                previewSurface = surface
 
                 // ImageReader：JPEG 输出，配合内容尺寸
                 val reader = ImageReader.newInstance(info.width, info.height, ImageFormat.JPEG, MAX_IMAGES)
-                reader.setOnImageAvailableListener(::onImageAvailable, cameraHandler)
+                // 帧回调带上本次代次：停止后才到达的帧直接丢弃，不写入 store / 不回调 UI
+                reader.setOnImageAvailableListener({ r -> onImageAvailable(r, gen) }, handler)
                 imageReader = reader
 
                 // 请求权限已由 MainActivity 申请，这里直接 open
                 cm.openCamera(id, object : CameraDevice.StateCallback() {
                     override fun onOpened(camera: CameraDevice) {
+                        // 迟到的回调：本次启动已被 stop() 取代。
+                        // 只关掉自己打开的相机，绝不写 captureSession / info / 状态回调，
+                        // 否则会覆盖下一次 start() 的会话（UI 显示推流中但没有帧）。
+                        if (gen != generation) {
+                            Log.w(TAG, "stale onOpened (gen=$gen, current=$generation), closing camera")
+                            closeCameraQuietly(camera)
+                            return
+                        }
                         cameraDevice = camera
                         try {
-                            createSession(camera, listOf(previewSurface, reader.surface), onReady)
+                            createSession(camera, listOf(surface, reader.surface), gen, onReady)
                         } catch (e: Exception) {
                             Log.e(TAG, "createSession failed", e)
                             fail("会话创建失败：$e")
@@ -207,15 +269,23 @@ class CameraController(
                     }
 
                     override fun onDisconnected(camera: CameraDevice) {
+                        if (gen != generation) {
+                            closeCameraQuietly(camera)
+                            return
+                        }
                         Log.w(TAG, "camera disconnected")
                         fail("相机已断开")
                     }
 
                     override fun onError(camera: CameraDevice, error: Int) {
+                        if (gen != generation) {
+                            closeCameraQuietly(camera)
+                            return
+                        }
                         Log.e(TAG, "camera error: $error")
                         fail("相机错误：$error")
                     }
-                }, cameraHandler)
+                }, handler)
             } catch (e: CameraAccessException) {
                 Log.e(TAG, "open camera failed", e)
                 fail("打开相机失败：$e")
@@ -228,8 +298,12 @@ class CameraController(
 
     /** 停止：关闭会话、相机、ImageReader，并结束线程（幂等） */
     fun stop() {
+        // 无论当前是否在跑都推进代次：这样 stop() 之后迟到的启动回调一律作废
+        generation++
         if (!isStreaming) return
         isStreaming = false
+        // 先摘掉帧回调，避免 stop 过程中还有新帧进来触碰正在关闭的资源
+        onFrameBitmap = null
         stopCamera()
         resetRuntimeState()
         info.isStreaming = false
@@ -259,6 +333,7 @@ class CameraController(
     private fun createSession(
         camera: CameraDevice,
         surfaces: List<Surface>,
+        gen: Int,
         onReady: () -> Unit,
     ) {
         val builder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
@@ -274,6 +349,13 @@ class CameraController(
             surfaces,
             object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(session: CameraCaptureSession) {
+                    // 迟到回调：stop() 之后才配置好的会话属于"作废的那次启动"。
+                    // 直接关掉它，绝不写 captureSession / info.isStreaming / 状态回调。
+                    if (gen != generation) {
+                        Log.w(TAG, "stale onConfigured (gen=$gen, current=$generation), closing session")
+                        closeSessionQuietly(session)
+                        return
+                    }
                     captureSession = session
                     try {
                         session.setRepeatingRequest(builder.build(), null, cameraHandler)
@@ -290,6 +372,10 @@ class CameraController(
                 }
 
                 override fun onConfigureFailed(session: CameraCaptureSession) {
+                    if (gen != generation) {
+                        closeSessionQuietly(session)
+                        return
+                    }
                     Log.e(TAG, "session configure failed")
                     fail("会话配置失败")
                 }
@@ -298,8 +384,13 @@ class CameraController(
         )
     }
 
-    /** ImageReader 回调：取 JPEG 帧写入 LatestFrameStore */
-    private fun onImageAvailable(reader: ImageReader) {
+    /**
+     * ImageReader 回调：取 JPEG 帧写入 LatestFrameStore。
+     *
+     * @param gen 注册监听时捕获的启动代次；与当前代次不一致说明这次启动已结束，
+     *            这一帧属于上一代，直接丢弃
+     */
+    private fun onImageAvailable(reader: ImageReader, gen: Int) {
         val image = try {
             reader.acquireLatestImage()
         } catch (e: Exception) {
@@ -310,6 +401,7 @@ class CameraController(
         if (image == null) return
 
         try {
+            if (gen != generation) return
             // 直接读取 JPEG 缓冲
             val buffer = image.planes[0].buffer
             val jpeg = ByteArray(buffer.remaining())
@@ -317,6 +409,22 @@ class CameraController(
 
             val takenNs = image.timestamp
             store.set(jpeg, takenNs)
+
+            // V0-B：本机推理需要 Bitmap 形态的同一帧。
+            // 复用 ImageReader 尺寸的解码：JPEG 解码成 Bitmap 只在有回调时进行，
+            // 推流模式（无回调）不付这个开销。
+            val frameCallback = onFrameBitmap
+            if (frameCallback != null) {
+                try {
+                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(
+                        jpeg, 0, jpeg.size)
+                    if (bitmap != null) {
+                        frameCallback(bitmap)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "decode frame bitmap failed", e)
+                }
+            }
 
             // 更新状态
             info.frameCount++
@@ -355,6 +463,9 @@ class CameraController(
      * 调用方必须返回（或提前 return），不要再继续使用已关闭的资源。
      */
     private fun fail(message: String) {
+        // 这次启动已经失败：推进代次，让同一批启动里随后到达的回调全部作废，
+        // 避免它们再往已经清理过的资源上写状态。
+        generation++
         isStreaming = false
         stopCamera()
         resetRuntimeState()
@@ -395,11 +506,37 @@ class CameraController(
         }
         imageReader = null
 
+        // 预览 Surface 必须 release：它持有原生缓冲，不释放就是每次启停泄漏一个
+        try {
+            previewSurface?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "release preview surface failed", e)
+        }
+        previewSurface = null
+
         cameraThread?.quitSafely()
         cameraThread = null
         cameraHandler = null
 
         cameraManager = null
+    }
+
+    /** 关闭一个"还没登记到字段"的会话（迟到的回调里用），异常一律吞掉 */
+    private fun closeSessionQuietly(session: CameraCaptureSession) {
+        try {
+            session.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "close stale session failed", e)
+        }
+    }
+
+    /** 关闭一个"还没登记到字段"的相机设备（迟到的回调里用），异常一律吞掉 */
+    private fun closeCameraQuietly(camera: CameraDevice) {
+        try {
+            camera.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "close stale camera failed", e)
+        }
     }
 
     private fun postState(state: State, message: String?) {

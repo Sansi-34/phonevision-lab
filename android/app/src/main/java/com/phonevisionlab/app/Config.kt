@@ -33,4 +33,37 @@ object Config {
 
     /** 目标地址中不能包含该子串，用来过滤热点/虚拟网卡等伪局域网地址 */
     const val IP_IGNORED_PREFIX = "wlan"
+
+    // =====================================================================
+    // 本机 AI 推理（V0-B 新增）
+    // =====================================================================
+
+    /**
+     * 是否启用 NNAPI 委派。
+     *
+     * 默认 false：NNAPI 在不同厂商 ROM 上行为差异很大，未在本项目目标机型上
+     * 逐台验证前不启用。开启前必须先在真机上确认"帧率确实提升且结果正确"，
+     * 否则宁可慢一点也要结果可复现。
+     */
+    const val USE_NNAPI = false
+
+    /** 推理线程数：旧手机多为 4-8 核，2 线程是稳妥默认（不抢满导致掉帧）。 */
+    const val INFERENCE_THREADS = 2
+
+    /**
+     * 推理频率上限（Hz）。相机可能 30fps，但模型每次执行有固定耗时，
+     * 无意义地跑满每一帧只会发热。这里限制为 10Hz，与推流默认帧率一致。
+     * 说明：这是"最多多快跑一次推理"，不是"保证达到"；实际帧率由
+     * InferenceEngine.measuredFps 实测给出。
+     */
+    const val INFERENCE_MAX_HZ = 10
+
+    /** 两次推理之间的最小间隔（毫秒），由 INFERENCE_MAX_HZ 推导。 */
+    const val INFERENCE_MIN_INTERVAL_MS = 1000 / INFERENCE_MAX_HZ
+
+    /** 推理用画面宽度：与推流预览一致，减少一次额外缩放。 */
+    const val INFERENCE_WIDTH = 640
+
+    /** 推理用画面高度。 */
+    const val INFERENCE_HEIGHT = 480
 }

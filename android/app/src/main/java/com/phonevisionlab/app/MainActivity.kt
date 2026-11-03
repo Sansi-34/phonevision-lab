@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startButton: android.widget.Button
     private lateinit var stopButton: android.widget.Button
 
+    /** V0-B：切换到"本机 AI 推理"模式的入口按钮 */
+    private lateinit var inferenceModeButton: android.widget.Button
+
     // ---- 核心对象 ----
     private val frameStore = LatestFrameStore()
     private val cameraInfo = CameraInfo()
@@ -84,9 +87,11 @@ class MainActivity : AppCompatActivity() {
         statusText = findViewById(R.id.statusText)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
+        inferenceModeButton = findViewById(R.id.inferenceModeButton)
 
         startButton.setOnClickListener { startStreaming() }
         stopButton.setOnClickListener { stopStreaming() }
+        inferenceModeButton.setOnClickListener { openInferenceMode() }
 
         preview.surfaceTextureListener = object : android.view.TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(
@@ -262,6 +267,20 @@ class MainActivity : AppCompatActivity() {
         stopButton.isEnabled = false
         currentStateText = "空闲"
         refreshStatus()
+    }
+
+    /**
+     * V0-B：打开"本机 AI 推理"界面。
+     *
+     * 两种模式互斥：进入推理界面前先停止推流，避免两套 CaptureSession 同时
+     * 占用相机（旧手机开两路相机通常直接失败）。
+     * 当前手机 IP 一并带过去，方便用户预填控制器地址（同一网段）。
+     */
+    private fun openInferenceMode() {
+        stopStreaming()
+        val intent = android.content.Intent(this, InferenceActivity::class.java)
+        wifiIpAddress()?.let { intent.putExtra(InferenceActivity.EXTRA_DEVICE_HOST, it) }
+        startActivity(intent)
     }
 
     /** 相机出错后的统一处理：停服务器、恢复按钮、提示错误 */
