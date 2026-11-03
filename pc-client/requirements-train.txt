@@ -1,0 +1,20 @@
+# PhoneVision Lab — 训练与导出依赖（可选，仅训练时需要）
+#
+# 为什么单独一个文件：TensorFlow 有几百 MB，普通预览/采集/推理客户端
+# 不需要它。把训练依赖隔离出来，让"只看画面"的用户装得轻、跑得快。
+#
+# 安装（在已装 requirements.txt 的基础上）：
+#   pip install -r requirements.txt -r requirements-train.txt
+#
+# Windows CPU 版安装命令（更快、更小，无需 CUDA）：
+#   pip install tensorflow-cpu==2.21.0
+#
+# 预训练权重（MobileNetV3Small 的 ImageNet 权重）：
+#   - 首次训练时由 Keras Applications 自动从 Google 官方源下载（约 8 MB）。
+#   - 许可证：Apache License 2.0（与 TensorFlow/Keras 相同）。
+#   - 离线准备：联网跑一次训练，权重缓存到 ~/.keras/models/ 之后即可离线使用；
+#     详见 docs/training.zh-CN.md。
+#
+# 说明：torch/onnx 等其他框架不在本轮范围内（本轮只实现一条推理路径，
+# 见 docs/architecture.zh-CN.md 的"为什么选 TFLite"）。
+tensorflow-cpu==2.21.0

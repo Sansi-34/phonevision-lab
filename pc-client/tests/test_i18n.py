@@ -194,14 +194,16 @@ class TranslatorBehaviorTest(unittest.TestCase):
         """用临时 QSettings 读写，不污染真实用户配置（PhoneVisionLab）。"""
         # 先清掉临时 org 的残留，确保测试从干净状态开始
         self.settings.clear()
+        # 真实用户配置命名空间（生产 QSettings 组织/应用名）：先取基线再比较。
+        # 不能直接断言 != LANG_EN —— 开发机/CI 上用户可能本来就保存了 en，
+        # 那会让"隔离性"测试误报（与隔离性无关的环境状态）。
+        prod = QSettings("PhoneVisionLab", "PhoneVisionLab")
+        before = prod.value("language")
         tr = Translator(settings=self.settings, initial_language=LANG_ZH)
         tr.set_language(LANG_EN, persist=True)
         self.assertEqual(self.settings.value("language"), LANG_EN)
-        # 真实用户配置命名空间（生产 QSettings 组织/应用名）不受影响：
-        # 若此前从未写过分区，value 应为 None；即便有旧值也不等于本测试写入值。
-        prod = QSettings("PhoneVisionLab", "PhoneVisionLab")
-        self.assertNotEqual(prod.value("language"), LANG_EN,
-                            "测试写入的语言不应泄漏到真实用户配置")
+        self.assertEqual(prod.value("language"), before,
+                         "测试写入的语言不应泄漏到真实用户配置")
 
     def test_injected_settings_seed_initial_language_from_saved(self):
         """构造时从注入的 QSettings 读取已保存语言（saved 参与初始语言解析）。"""

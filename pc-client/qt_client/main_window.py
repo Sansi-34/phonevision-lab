@@ -32,8 +32,9 @@ import numpy as np
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QImage, QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel, QMainWindow,
-    QPushButton, QScrollArea, QSlider, QVBoxLayout, QWidget,
+    QAbstractSpinBox, QApplication, QButtonGroup, QComboBox, QFrame,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPlainTextEdit, QPushButton,
+    QScrollArea, QSlider, QTextEdit, QVBoxLayout, QWidget,
 )
 
 import app_model
@@ -128,6 +129,9 @@ class MainWindow(QMainWindow):
         self.tr.language_changed.connect(self._apply_language)
         # 当前 toast 的可重译状态：(i18n_key, kwargs, kind)。语言切换时重发。
         self._toast_state = None
+        # 上一次已展示的连接错误。用于"错误从有到无"时只清一次 error toast，
+        # 而不是每 33ms 无条件 clear()（那会把一次性 success/warning 也吞掉）。
+        self._last_error_shown = ""
 
         # 窗口标题固定为 "PhoneVision Lab"。
         # HTTPConnectionPool/保存结果/错误信息绝不允许进标题。
@@ -153,6 +157,7 @@ class MainWindow(QMainWindow):
             "error": "",
         }
         self._last_frame_num = None
+        self._last_placeholder = None  # (state, detail)：占位去重，避免每 tick 重绘
         self._qimg = None  # 保引用，防止 QImage 底层数据被回收
         # 兼容旧接口：metrics dict（键与旧版一致），供测试与诊断区使用。
         self.metrics = {
@@ -222,6 +227,9 @@ class MainWindow(QMainWindow):
         self.tr.language_changed.connect(self.diagnostics._apply_language)
         outer.addWidget(self.diagnostics)
 
+        # ---- 底部工作台标签页：数据集 / 训练导出 / 硬件联动 / 性能 ----
+        self._build_workbench_tabs(outer)
+
         # ---- Toast（顶栏下浮层）----
         self.toast = ToastBanner()
         outer.addWidget(self.toast)
@@ -229,6 +237,88 @@ class MainWindow(QMainWindow):
         # 按当前语言刷新全部可见文案（构造时 _apply_mode_params 等已用英文
         # 标签初始化滑块副标签，这里统一切到正确语言）。
         self._apply_language()
+
+    def _build_workbench_tabs(self, outer):
+        """底部标签页：把"数据集 -> 训练导出 -> 硬件联动 -> 性能分析"串成一条工作流。
+
+        为什么用标签页而不是弹窗：这几步是同一任务的连续阶段，放在一个窗口里
+        切换比开多个对话框更贴近"工作台"的心智模型，也避免窗口丢失。
+        """
+        from PySide6.QtWidgets import QTabWidget
+
+        from qt_client.dataset_panel import DatasetPanel
+        from qt_client.hardware_panel import HardwarePanel
+        from qt_client.perf_panel import PerfPanel
+        from qt_client.train_panel import TrainPanel
+
+        self.tabs = QTabWidget()
+        self.tabs.setObjectName("workbenchTabs")
+        self.tabs.setMinimumHeight(300)
+
+        # 数据集：帧来自当前 MJPEG 流（复用 reader，不另开连接）
+        self.dataset_panel = DatasetPanel(
+            translator=self.tr, frame_provider=self._capture_frame_provider)
+        self.train_panel = TrainPanel(
+            translator=self.tr, dataset_panel=self.dataset_panel)
+        self.hardware_panel = HardwarePanel(
+            translator=self.tr, class_provider=self._class_provider)
+        self.perf_panel = PerfPanel(
+            translator=self.tr, model_provider=self._model_info_provider)
+
+        for panel in (self.dataset_panel, self.train_panel,
+                      self.hardware_panel, self.perf_panel):
+            # The bottom workspace may be shorter than a panel on a laptop.
+            # Preserve natural control sizes and make every action reachable.
+            panel.setMinimumHeight(panel.sizeHint().height())
+            scroll = QScrollArea()
+            scroll.setFrameShape(QFrame.NoFrame)
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(panel)
+            self.tabs.addTab(scroll, "")
+        outer.addWidget(self.tabs, 1)
+
+        # 语言切换时刷新标签页标题
+        self.tr.language_changed.connect(self._apply_tab_language)
+        # 构造时也要刷一次：language_changed 只在"切换语言"时触发，
+        # 不刷的话标签页标题会是空字符串。
+        self._apply_tab_language()
+
+    def _apply_tab_language(self):
+        """按当前语言刷新底部标签页标题。
+
+        索引 0~3 对应 数据集/训练导出/硬件联动/性能分析；
+        "视觉工作台"是主界面本身，不占标签页。
+        """
+        tab_keys = ["wb_tab_dataset", "wb_tab_train", "wb_tab_hardware",
+                    "wb_tab_perf"]
+        for index, key in enumerate(tab_keys):
+            self.tabs.setTabText(index, self.tr.text(key))
+
+    # ---- 标签页需要的数据提供者 ----
+
+    def _capture_frame_provider(self):
+        """采集用的帧提供者：直接复用 MJPEG reader 的最新帧。
+
+        返回 (BGR ndarray 或 None, 帧号或 None)。断线/无帧时返回 (None, None)，
+        数据集面板会明确提示"当前没有可采集的画面"。
+        """
+        try:
+            frame, num = self.model.get_latest_frame()
+        except Exception:  # noqa: BLE001 - 取帧失败按"无帧"处理
+            return None, None
+        return frame, num
+
+    def _class_provider(self):
+        """当前数据集/模型的类别名（硬件面板的目标类别下拉用）。"""
+        panel = self.dataset_panel
+        if panel is not None and panel.store is not None \
+                and panel.store.dataset is not None:
+            return panel.store.dataset.class_names()
+        return []
+
+    def _model_info_provider(self):
+        """PC 当前无法确认手机加载了哪个模型。"""
+        return {}
 
     def _build_topbar(self, outer, StatusPill, ToastBanner):
         """顶栏：左侧品牌+设备名，右侧 StatusPill + 保存/重连按钮。"""
@@ -507,20 +597,42 @@ class MainWindow(QMainWindow):
     # =====================================================================
 
     def _build_shortcuts(self):
-        """S=保存、R=重连、1-5=切模式、Ctrl+Q=退出。"""
+        """S=保存、R=重连、1-5=切模式、Ctrl+Q=退出。
+
+        单字符快捷键是窗口级的，Qt 会先于焦点控件处理按键。若不做守卫，
+        用户在数据集类别名、硬件 IP/端口输入框里打字就会触发保存/重连/切模式
+        （输入 192.168.1.10 必然命中 "1"）。因此统一包一层 _guarded()。
+        """
         self.shortcuts = [
             QShortcut(QKeySequence("S"), self),
             QShortcut(QKeySequence("R"), self),
             QShortcut(QKeySequence("Ctrl+Q"), self),
         ]
-        self.shortcuts[0].activated.connect(self.save_capture)
-        self.shortcuts[1].activated.connect(self.reconnect)
+        self.shortcuts[0].activated.connect(self._guarded(self.save_capture))
+        self.shortcuts[1].activated.connect(self._guarded(self.reconnect))
         self.shortcuts[2].activated.connect(self.close)
 
         for i, mode in enumerate(MODE_PARAM_KEYS, start=1):
             sc = QShortcut(QKeySequence(str(i)), self)
-            sc.activated.connect(lambda m=mode: self.set_mode(m))
+            sc.activated.connect(self._guarded(lambda m=mode: self.set_mode(m)))
             self.shortcuts.append(sc)
+
+    @staticmethod
+    def _focus_in_text_input() -> bool:
+        """焦点是否落在文本输入类控件上（此时单字符快捷键必须让位）。"""
+        w = QApplication.focusWidget()
+        if w is None:
+            return False
+        return isinstance(w, (QLineEdit, QAbstractSpinBox, QTextEdit,
+                              QPlainTextEdit))
+
+    def _guarded(self, action):
+        """把单字符快捷键动作包一层：在输入框里打字时不触发。"""
+        def runner():
+            if self._focus_in_text_input():
+                return
+            action()
+        return runner
 
     # =====================================================================
     # 交互
@@ -574,8 +686,27 @@ class MainWindow(QMainWindow):
         self.model.reconnect()
 
     def closeEvent(self, event):
-        """窗口关闭：确保后台读取线程被 stop。"""
+        """窗口关闭：确保后台读取线程被 stop，并回收各面板的长任务。"""
+        training_panel = getattr(self, "train_panel", None)
+        if training_panel is not None and training_panel.export_in_progress():
+            self.toast.show_message(self.tr.text("tr_export_wait_close"), "warning")
+            event.ignore()
+            return
         self.model.stop()
+        # 训练线程：取消并 join，避免遗留后台训练进程
+        trainer = getattr(self, "train_panel", None)
+        if trainer is not None and trainer.trainer is not None \
+                and trainer.trainer.is_running():
+            trainer.trainer.cancel()
+            trainer.trainer.join(timeout=3.0)
+        # 硬件连接：断开，清理去重缓存
+        hardware = getattr(self, "hardware_panel", None)
+        if hardware is not None:
+            hardware.on_disconnect()
+        # 数据集采集定时器
+        dataset = getattr(self, "dataset_panel", None)
+        if dataset is not None and dataset.is_capturing():
+            dataset.on_stop_capture()
         super().closeEvent(event)
 
     # =====================================================================
@@ -587,45 +718,50 @@ class MainWindow(QMainWindow):
             self.model.refresh()  # 汇总统计（不含网络请求；/ping 由后台 worker 负责）
             self._update_frame()
             self._update_metrics()
+            self._feed_perf_panel()
         except Exception as e:  # noqa: BLE001 - UI 刷新不能崩
             logging.exception("PySide6 刷新异常")
             self.stats["error"] = str(e)
+
+    def _feed_perf_panel(self):
+        """把当前连接/推理口径喂给性能面板（只在测试进行中才有意义）。"""
+        perf = getattr(self, "perf_panel", None)
+        if perf is None or perf.record is None:
+            return
+        st = self.stats
+        if st.get("state") != "Streaming":
+            perf.clear_transport()
+            return
+        perf.update_transport(
+            phone_capture_fps=st.get("phone_fps", 0.0) or 0.0,
+            pc_receive_fps=st.get("recv_fps", 0.0) or 0.0,
+            pc_display_fps=st.get("disp_fps", 0.0) or 0.0,
+            dropped=int(st.get("dropped", 0) or 0),
+        )
 
     def _update_frame(self):
         # 共享模型帧新鲜度语义：未收到首帧或超过阈值（3s）无新帧时
         # 返回 (None, None)，进入占位分支，替换旧画面。
         frame, num = self.reader.get_latest_frame()
-        if num is not None and num == self._last_frame_num:
-            return  # 同帧去重：帧号没变，跳过重复处理与重建
-        self._last_frame_num = num
-
         snap = self.model.snapshot()
-        if frame is not None:
-            # 收到新帧（含恢复后第一张新帧）：立即替换占位画面
+
+        if num is not None and num != self._last_frame_num:
+            # 只有"新帧"才付出 apply_mode + 重建 QPixmap 的代价。
+            self._last_frame_num = num
             disp = vision_modes.apply_mode(self.mode, frame, self.params)
             self.model.mark_frame_displayed()  # 通知共享模型：本帧已显示
             self._show_frame(disp)
-        else:
-            # 断流/未连接占位分支：交给 VideoView 绘制居中占位。
-            # 状态名用大写，匹配 VideoView.PLACEHOLDER_CONFIG。
-            if snap.connection_state == "Stopped":
-                self.video_view.set_placeholder(
-                    "Stopped", detail=self.tr.text("placeholder_stopped"))
-            elif snap.connection_state == "Reconnecting":
-                self.video_view.set_placeholder(
-                    "Reconnecting",
-                    detail=self.tr.text("placeholder_reconnecting_sub"))
-            elif snap.last_error:
-                self.video_view.set_placeholder(
-                    "Error", detail=snap.last_error
-                    or self.tr.text("placeholder_error"))
-            else:
-                self.video_view.set_placeholder(
-                    "Connecting",
-                    detail=f"{self.tr.text('placeholder_connecting_sub')}: "
-                           f"{snap.connection_state}")
+            self._last_placeholder = None      # 画面已恢复，允许下次重新占位
+        elif frame is None:
+            # 断流/未连接/陈旧：占位分支。帧号去重绝不能挡住这里，
+            # 否则停流后状态灯与占位会永久停在上一次有新帧的时刻。
+            state, detail = self._placeholder_for(snap)
+            if (state, detail) != self._last_placeholder:
+                self._last_placeholder = (state, detail)
+                self.video_view.set_placeholder(state, detail)
 
-        # 从共享快照同步统计（不再在本窗口自算 FPS/吞吐/丢帧）
+        # 从共享快照同步统计（不再在本窗口自算 FPS/吞吐/丢帧）。
+        # 必须在"有没有新帧"之外执行：状态/分辨率/错误都会在没有新帧时变化。
         st = self.stats
         st["state"] = snap.connection_state
         st["phone_fps"] = snap.phone_fps
@@ -636,6 +772,10 @@ class MainWindow(QMainWindow):
         st["dropped"] = snap.estimated_dropped_frames
         st["avg_jpeg_mb"] = snap.average_jpeg_bytes / (1024 * 1024)
         st["throughput_mbps"] = snap.bandwidth_mbps
+        # 分辨率必须跟着快照走：ping_info 为空（走启动页连接）时初始值是 0x0，
+        # 只有这里同步，诊断区的 "分辨率" 才会在 /ping 成功后真正更新。
+        st["width"] = snap.width
+        st["height"] = snap.height
         # 双向同步错误：有错误显示真实错误；无错误（连接恢复后模型已清空）
         # 立即清空本地残留，不留旧 HTTP 错误。
         st["error"] = snap.last_error or ""
@@ -645,11 +785,27 @@ class MainWindow(QMainWindow):
         else:
             self.device_label.setText(self.tr.text("device_placeholder"))
 
+    def _placeholder_for(self, snap):
+        """按快照决定占位类型与副文案（纯函数，便于测试）。"""
+        # 状态名用大写，匹配 VideoView.PLACEHOLDER_CONFIG。
+        if snap.connection_state == "Stopped":
+            return "Stopped", self.tr.text("placeholder_stopped")
+        if snap.connection_state == "Reconnecting":
+            return "Reconnecting", self.tr.text("placeholder_reconnecting_sub")
+        if snap.last_error:
+            return "Error", snap.last_error or self.tr.text("placeholder_error")
+        return ("Connecting",
+                f"{self.tr.text('placeholder_connecting_sub')}: "
+                f"{snap.connection_state}")
+
     def _show_frame(self, frame_bgr):
         """把 BGR 帧转 QPixmap 显示到画面区（等比例缩放）。"""
         img = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         h, w, c = img.shape
-        self._qimg = QImage(img.data, w, h, c * w, QImage.Format_RGB888)
+        # copy()：QImage 不持有 numpy 内存，img 是局部变量，函数返回即释放，
+        # 不 copy 会把一个悬垂视图交给 QPixmap。帧率约 30fps，一次拷贝可忽略。
+        self._qimg = QImage(img.data, w, h, c * w,
+                            QImage.Format_RGB888).copy()
         self.video_view.set_frame(QPixmap.fromImage(self._qimg))
 
     def _update_metrics(self):
@@ -668,12 +824,23 @@ class MainWindow(QMainWindow):
         else:
             self.device_label.setText(self.tr.text("device_placeholder"))
 
-        # 错误语义：真实错误走 error toast；恢复后 clear()。
-        # 注意：保存成功/无画面是 warning/success 通道，绝不进 error。
-        if st["error"]:
-            self.toast.show_message(st["error"], "error")
-        else:
-            self.toast.clear()
+        # 错误语义：真实错误走 error toast；恢复后只清错误提示。
+        # 关键：不能每个 tick 无条件 clear()——那会在 33ms 内吞掉
+        # save_capture 的 success、"无画面" warning、关窗拦截警告，
+        # 用户什么都看不到。一次性消息由 ToastBanner 自己的定时器消退。
+        err = st["error"]
+        if err:
+            if err != self._last_error_shown:
+                self._last_error_shown = err
+                self.toast.show_message(err, "error")
+        elif self._last_error_shown:
+            # 错误从"有"变"无"：只清一次，且只清 error 类提示；
+            # 若当前显示的是一次性 success/warning，不抢它。
+            self._last_error_shown = ""
+            current_kind = self._toast_state[2] if self._toast_state else None
+            if current_kind in (None, "error"):
+                self._toast_state = None
+                self.toast.clear()
 
         # 诊断区：更新全部指标（DiagnosticsPanel 默认只显示 接收/显示FPS/丢帧）
         self.diagnostics.update_values({

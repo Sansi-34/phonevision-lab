@@ -1,0 +1,4 @@
+# Reuse the existing, verified Windows package versions for development.
+-r packaging/requirements-windows.lock
+# Static CI-workflow tests parse YAML; this is a development-only dependency.
+PyYAML==6.0.3

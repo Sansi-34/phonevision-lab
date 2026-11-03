@@ -148,7 +148,8 @@ class CiWorkflowTest(unittest.TestCase):
     def test_yaml_syntax_valid(self):
         for wf in glob.glob(os.path.join(WORKFLOWS_DIR, "*.yml")):
             try:
-                yaml.safe_load(open(wf, encoding="utf-8"))
+                with open(wf, encoding="utf-8") as fh:
+                    yaml.safe_load(fh)
             except yaml.YAMLError as e:
                 self.fail(f"{wf}: YAML 语法错误: {e}")
 

@@ -50,6 +50,21 @@ LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 | charset-normalizer | 3.5.0 | MIT | https://charset-normalizer.readthedocs.io | `charset_normalizer_LICENSE.txt` |
 | idna | 3.18 | BSD-3-Clause | https://github.com/kjd/idna | `idna_LICENSE.md` |
 
+## 训练专用依赖（不随便携包分发）
+
+以下组件仅在用户选择训练模型时才会用到，**不打包进 Windows 便携包**。
+便携包只包含"预览 / 采集 / 连接"所需的最小集合，因此 TensorFlow
+（数百 MB）不会进入最终 ZIP。
+
+| 组件 | 版本 | 许可 | 项目主页 | 说明 |
+| --- | --- | --- | --- | --- |
+| TensorFlow（CPU 版） | 2.21.0 | Apache-2.0 | https://www.tensorflow.org/ | 训练与 TFLite 转换；安装方式见 `pc-client/requirements-train.txt` |
+| Keras（随 TensorFlow） | 3.x | Apache-2.0 | https://keras.io/ | `tf.keras` 高层 API |
+| MobileNetV3 ImageNet 预训练权重 | — | Apache-2.0 | Keras Applications | 首次训练时自动下载（约 8 MB），**不随仓库或便携包分发**；离线准备方法见 `docs/training.zh-CN.md` |
+
+> 选择这些依赖的理由、为何不采用 ONNX Runtime、以及为何默认只用 CPU 推理，
+> 见 `docs/architecture.md` 的"Why TensorFlow Lite (and not ONNX Runtime)"一节。
+
 ## 构建期组件（仅打包时使用，不随便携包分发）
 
 | 组件 | 版本 | 许可 | 项目主页 |

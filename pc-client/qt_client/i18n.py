@@ -167,6 +167,7 @@ STRINGS = {
     # ---------- 连接启动页（ConnectionDialog） ----------
     "connect_title": ("PhoneVision Lab", "PhoneVision Lab"),
     "version_label": ("版本: {version}", "Version: {version}"),
+    "version_unknown": ("版本未知", "Version unknown"),
     "enter_ip_label": ("手机 IP 或主机名", "Phone IP or hostname"),
     "ip_placeholder": ("例如 192.168.1.100", "e.g. 192.168.1.100"),
     "port_label": ("端口", "Port"),
@@ -180,6 +181,196 @@ STRINGS = {
     "error_host_required": ("请输入手机 IP 或主机名", "Enter the phone IP or hostname"),
     "error_port_invalid": ("端口必须是 1-65535 的数字", "Port must be a number from 1 to 65535"),
     "error_unknown": ("连接失败，请检查网络后重试", "Connection failed, check the network and retry"),
+
+    # ---------- 数据集工作台（DatasetPanel）----------
+    "ds_title": ("数据集", "Dataset"),
+    "ds_none": ("（还没有数据集）", "(no dataset yet)"),
+    "ds_open": ("打开", "Open"),
+    "ds_create": ("新建", "Create"),
+    "ds_create_title": ("新建数据集", "Create dataset"),
+    "ds_create_prompt": ("数据集名称（用作目录名）", "Dataset name (used as directory name)"),
+    "ds_create_failed": ("创建失败: {error}", "Create failed: {error}"),
+    "ds_open_failed": ("打开失败: {error}", "Open failed: {error}"),
+    "ds_open_first": ("请先创建或打开一个数据集", "Create or open a dataset first"),
+    "ds_no_dataset": ("尚未打开数据集", "No dataset open"),
+    "ds_classes": ("类别", "Classes"),
+    "ds_add_class": ("新增类别", "Add class"),
+    "ds_rename": ("重命名", "Rename"),
+    "ds_rename_title": ("重命名类别", "Rename class"),
+    "ds_rename_prompt": ("新的类别名", "New class name"),
+    "ds_rename_failed": ("重命名失败: {error}", "Rename failed: {error}"),
+    "ds_add_failed": ("新增类别失败: {error}", "Add class failed: {error}"),
+    "ds_class_placeholder": ("类别名，如 apple", "Class name, e.g. apple"),
+    "ds_capture": ("采集", "Capture"),
+    "ds_capture_one": ("采集一张", "Capture one"),
+    "ds_capture_start": ("开始连续采集", "Start burst"),
+    "ds_capture_stop": ("停止采集", "Stop burst"),
+    "ds_capturing": ("采集中：已保存 {count} 张（批次 {batch}）",
+                     "Capturing: {count} saved (batch {batch})"),
+    "ds_capture_stopped": ("采集结束：已保存 {count} 张", "Capture stopped: {count} saved"),
+    "ds_no_frame": ("当前没有可采集的画面（手机未推流或已断线）",
+                    "No frame available (phone not streaming or disconnected)"),
+    "ds_wait_new_frame": ("等待新的摄像头画面，避免重复保存同一帧",
+                          "Waiting for a new camera frame to avoid duplicates"),
+    "ds_save_failed": ("保存失败: {error}", "Save failed: {error}"),
+    "ds_batch_failed": ("创建采集批次失败: {error}", "Create batch failed: {error}"),
+    "ds_no_class": ("请先选择采集类别", "Select a capture class first"),
+    "ds_stats": ("样本: {classes}　合计 {total}",
+                 "Samples: {classes}  total {total}"),
+    "ds_check": ("数据体检", "Check data"),
+    "ds_check_ok": ("体检通过：可以开始训练", "Check passed: ready to train"),
+    "ds_check_problems": ("问题（需先处理）:", "Problems (fix first):"),
+    "ds_check_warnings": ("提示（不阻断）:", "Warnings (non-blocking):"),
+    "ds_split": ("划分训练/验证", "Split train/val"),
+    "ds_split_failed": ("划分失败: {error}", "Split failed: {error}"),
+    "ds_split_done": ("划分完成（按采集批次，避免相邻近似帧跨集合）",
+                      "Split done (by capture batch, so near-identical frames stay together)"),
+    "ds_split_train": ("训练集: {count} 张（{detail}）",
+                       "Train: {count} ({detail})"),
+    "ds_split_val": ("验证集: {count} 张（{detail}）",
+                     "Val: {count} ({detail})"),
+    "ds_split_path": ("已保存: {path}", "Saved: {path}"),
+
+    # ---------- 训练与导出（TrainPanel）----------
+    "tr_title": ("训练与导出", "Train & Export"),
+    "tr_no_dataset": ("请先在数据集面板打开数据集", "Open a dataset in the Dataset panel first"),
+    "tr_no_split": ("尚未划分训练/验证集，请先点“划分训练/验证”",
+                    "No train/val split yet — press “Split train/val” first"),
+    "tr_need_tensorflow": (
+        "当前程序未加载 TensorFlow。请在项目目录使用 start-training.cmd 启动训练工作台；"
+        "便携版暂不支持训练。",
+        "TensorFlow is not available in this process. Use start-training.cmd in the project folder; "
+        "training is not yet available in the portable build."),
+    "tr_start": ("开始训练", "Start training"),
+    "tr_cancel": ("取消训练", "Cancel training"),
+    "tr_export": ("导出模型包", "Export model package"),
+    "tr_running": ("训练中…", "Training…"),
+    "tr_epoch": ("Epoch {epoch}/{total}", "Epoch {epoch}/{total}"),
+    "tr_step": ("step {step}/{total}", "step {step}/{total}"),
+    "tr_loss": ("损失 {loss}", "loss {loss}"),
+    "tr_acc": ("训练准确率 {acc}", "train acc {acc}"),
+    "tr_val": ("验证准确率 {acc}", "val acc {acc}"),
+    "tr_best": ("最佳 {acc}", "best {acc}"),
+    "tr_done": ("训练完成", "Training complete"),
+    "tr_cancelled": ("训练已取消", "Training cancelled"),
+    "tr_failed": ("训练失败: {error}", "Training failed: {error}"),
+    "tr_export_done": ("模型包已生成: {path}", "Model package created: {path}"),
+    "tr_export_failed": ("导出失败: {error}", "Export failed: {error}"),
+    "tr_consistency": (
+        "导出一致性：最大误差 {error}，Top-1 一致率 {agreement}",
+        "Export consistency: max error {error}, Top-1 agreement {agreement}"),
+    "tr_device_cpu": ("CPU（兼容所有电脑）", "CPU (works everywhere)"),
+    "tr_device_gpu": ("GPU（检测到可用时）", "GPU (when available)"),
+    "tr_env_ok": (
+        "训练环境已就绪（TensorFlow 已安装）。",
+        "Training environment ready (TensorFlow installed)."),
+    "tr_exporting": ("正在导出模型包…", "Exporting model package…"),
+    "tr_export_wait_close": ("模型正在导出，请等待完成后再关闭窗口。",
+                             "A model export is in progress. Wait until it finishes before closing."),
+    "tr_export_no_model": (
+        "还没有训练产物（best.keras）。请先完成一次训练。",
+        "No trained model (best.keras) yet. Finish a training run first."),
+
+    # ---------- 硬件联动（HardwarePanel）----------
+    "hw_title": ("硬件联动", "Hardware"),
+    "hw_device_ip": ("控制器 IP", "Controller IP"),
+    "hw_port": ("端口", "Port"),
+    "hw_connect": ("连接", "Connect"),
+    "hw_disconnect": ("断开", "Disconnect"),
+    "hw_status": ("状态", "Status"),
+    "hw_connected": ("已连接", "Connected"),
+    "hw_disconnected": ("未连接", "Disconnected"),
+    "hw_error": ("连接异常: {error}", "Link error: {error}"),
+    "hw_manual": ("手动动作测试", "Manual action test"),
+    "hw_led_on": ("LED 开", "LED on"),
+    "hw_led_off": ("LED 关", "LED off"),
+    "hw_target_class": ("目标类别", "Target class"),
+    "hw_trigger_conf": ("触发置信度", "Trigger confidence"),
+    "hw_confirm_count": ("连续确认次数", "Confirm count"),
+    "hw_exit_conf": ("退出置信度", "Exit confidence"),
+    "hw_release_frames": ("退出帧数", "Release frames"),
+    "hw_cooldown": ("冷却时间(ms)", "Cooldown (ms)"),
+    "hw_auto": ("开启自动控制", "Enable auto control"),
+    "hw_auto_on": ("自动控制：已开启", "Auto control: ON"),
+    "hw_stop": ("停止控制", "Stop control"),
+    "hw_stopped": ("已停止自动控制，不会再产生新的自动动作",
+                   "Auto control stopped — no further automatic actions"),
+    "hw_need_manual": (
+        "请先连接设备并完成手动 LED 验证，再开启自动控制",
+        "Connect the device and verify the LED manually before enabling auto control"),
+    "hw_no_prediction_source": (
+        "当前没有视觉结果来源，自动控制不会产生任何动作。\n\n"
+        "PC 客户端默认只提供传统视觉模式（原始/灰度/Canny/HSV/轮廓），"
+        "没有分类器，因此无法在此驱动自动控制。\n\n"
+        "自动控制在 Android 端可用：手机导入模型并推理后，"
+        "识别结果会直接驱动规则引擎与设备。",
+        "There is no vision-result source, so auto control will never fire.\n\n"
+        "The PC client only provides classical vision modes "
+        "(original/gray/Canny/HSV/contours) and has no classifier, so it cannot "
+        "drive auto control here.\n\n"
+        "Auto control works on Android: after importing a model and running "
+        "inference, recognition results drive the rule engine and the device."),
+    "hw_not_connected": ("尚未连接设备", "Device not connected"),
+    "hw_rule_state": ("规则状态", "Rule state"),
+    "hw_rule_triggered": ("已触发", "Triggered"),
+    "hw_rule_idle": ("未触发", "Idle"),
+    "hw_confirm_progress": ("连续确认 {n}/{total}", "Confirm {n}/{total}"),
+    "hw_event_log": ("事件记录", "Event log"),
+    "hw_cmd_sent": ("已发送", "Sent"),
+    "hw_cmd_received": ("已接收", "Received"),
+    "hw_cmd_executed": ("已执行", "Executed"),
+    "hw_cmd_failed": ("失败", "Failed"),
+    "hw_ack_note": (
+        "设备只确认接收时，界面显示“已接收”，不显示执行成功",
+        "When the device only confirms receipt, the UI shows “Received”, not “Executed”"),
+    "hw_simulated": (
+        "模拟设备：仅验证软件链路，不等于真实硬件验收通过",
+        "Simulated device: validates the software path only — not a real-hardware pass"),
+    "hw_pc_no_classifier": (
+        "PC 客户端没有分类器，本面板的自动控制不可用；手动动作测试与设备连接可用。"
+        "自动控制在 Android 端可用（导入模型并推理后由识别结果驱动）。",
+        "The PC client has no classifier, so auto control is unavailable here; "
+        "manual action testing and device connection do work. Auto control works "
+        "on Android (driven by recognition results after importing a model)."),
+    "hw_pc_has_classifier": (
+        "已注入视觉结果来源，自动控制可用。",
+        "A vision-result source is injected; auto control is available."),
+
+    # ---------- 性能（PerfPanel）----------
+    "pf_title": ("性能分析", "Performance"),
+    "pf_start": ("开始测试", "Start test"),
+    "pf_stop": ("停止测试", "Stop test"),
+    "pf_warmup": ("预热(秒)", "Warmup (s)"),
+    "pf_duration": ("测试时长(秒)", "Duration (s)"),
+    "pf_procedure_note": ("先预热，再按固定时长采样；帧率为每秒采样均值。手机推理与硬件数据尚未接入时显示 --。",
+                          "Warm up, then sample for the selected duration. FPS is the mean of one-second samples; unavailable inference and hardware data is shown as --."),
+    "pf_export_csv": ("导出 CSV", "Export CSV"),
+    "pf_export_summary": ("导出摘要", "Export summary"),
+    "pf_exported": ("已导出: {path}", "Exported: {path}"),
+    "pf_capture_fps": ("手机采集帧率", "Phone capture FPS"),
+    "pf_receive_fps": ("PC 接收帧率", "PC receive FPS"),
+    "pf_display_fps": ("PC 显示帧率", "PC display FPS"),
+    "pf_infer_fps": ("手机推理帧率", "Phone inference FPS"),
+    "pf_preprocess": ("预处理", "Preprocess"),
+    "pf_model": ("模型执行", "Model"),
+    "pf_postprocess": ("后处理", "Postprocess"),
+    "pf_dropped": ("丢弃帧", "Dropped"),
+    "pf_completed": ("完成帧", "Completed"),
+    "pf_unsupported": ("不支持", "Unsupported"),
+    "pf_power_note": (
+        "功耗仅在设备提供真实数据源时显示；PC 客户端不测量手机功耗。",
+        "Power is shown only when the device exposes a real source; the PC client does not measure phone power."),
+    "pf_hw_latency": ("命令确认耗时", "Command ack latency"),
+    "pf_hw_note": (
+        "命令确认耗时 = 发送到控制器确认；设备只确认接收时不等于机械动作完成耗时。",
+        "Ack latency = send-to-controller-confirmation; it is not mechanical completion time when the device only confirms receipt."),
+
+    # ---------- 工作台标签页 ----------
+    "wb_tab_vision": ("视觉工作台", "Vision"),
+    "wb_tab_dataset": ("数据集", "Dataset"),
+    "wb_tab_train": ("训练与导出", "Train & Export"),
+    "wb_tab_hardware": ("硬件联动", "Hardware"),
+    "wb_tab_perf": ("性能分析", "Performance"),
 }
 
 # 缺失 key 的显式回退模板：绝不清空白，界面上一眼可见。

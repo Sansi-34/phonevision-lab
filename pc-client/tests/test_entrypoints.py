@@ -44,8 +44,14 @@ def _read_main_source() -> str:
 def _run(args: list, cwd=_PC_CLIENT) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    # 子进程会打印中文。中文 Windows 的控制台默认是 GBK，父进程用 text=True
+    # 按 locale 解码时会在读取线程里抛 UnicodeDecodeError，stdout 直接变成 None
+    # （断言里随即报 "unsupported operand type(s) for +: 'NoneType' and 'str'"）。
+    # 因此两侧都固定 UTF-8：子进程用 PYTHONIOENCODING，父进程显式 encoding。
+    env["PYTHONIOENCODING"] = "utf-8"
     return subprocess.run([sys.executable] + args, cwd=cwd, env=env,
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", timeout=60)
 
 
 def _run_help(argv: list) -> subprocess.CompletedProcess:

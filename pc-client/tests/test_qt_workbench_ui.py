@@ -293,6 +293,55 @@ class QtWorkbenchUiTest(unittest.TestCase):
         self.assertFalse(self.win.toast.isVisible(), "恢复后 toast 应隐藏")
         self.assertEqual(self.win.windowTitle(), "PhoneVision Lab")
 
+    def test_save_success_toast_survives_next_refresh(self):
+        """回归：success toast 必须跨 _refresh() 存活。
+
+        原缺陷：_update_metrics 每 33ms 无条件 toast.clear()，保存成功的提示
+        在下一 tick 就被吞掉，用户看不到任何反馈（只有一个不可见的成功）。
+        """
+        self.win._timer.stop()
+        self._show()
+        frame = np.full((48, 64, 3), 120, dtype=np.uint8)
+        self.win.model._set_frame(frame, num=1, received=1)
+        with mock.patch("os.makedirs"), mock.patch("cv2.imwrite"):
+            self.win.save_capture()
+        for _ in range(3):
+            self.win._refresh()
+            self.app.processEvents()
+        self.assertEqual(self.win.toast.current_kind(), "success")
+        self.assertTrue(self.win.toast.isVisible(),
+                        "保存成功提示应跨刷新仍可见")
+
+    def test_no_frame_warning_survives_next_refresh(self):
+        """回归：无帧 warning 也必须跨刷新存活（同一条 clear() 缺陷）。"""
+        self.win._timer.stop()
+        self._show()
+        self.win.save_capture()  # 无帧
+        for _ in range(3):
+            self.win._refresh()
+            self.app.processEvents()
+        self.assertEqual(self.win.toast.current_kind(), "warning")
+        self.assertTrue(self.win.toast.isVisible())
+
+    def test_error_toast_cleared_once_after_recovery(self):
+        """错误恢复后只清一次：后续刷新不会反复影响一次性提示。"""
+        self.win._timer.stop()
+        self._show()
+        self.win.model.last_error = "boom"
+        self.win._refresh()
+        self.assertTrue(self.win.toast.isVisible())
+        self.win.model.last_error = None
+        self.win._refresh()
+        self.assertFalse(self.win.toast.isVisible())
+        # 恢复后再弹一次性 success，后续刷新不应把它清掉
+        frame = np.full((48, 64, 3), 120, dtype=np.uint8)
+        self.win.model._set_frame(frame, num=7, received=7)
+        with mock.patch("os.makedirs"), mock.patch("cv2.imwrite"):
+            self.win.save_capture()
+        self.win._refresh()
+        self.assertEqual(self.win.toast.current_kind(), "success")
+        self.assertTrue(self.win.toast.isVisible())
+
     # =====================================================================
     # 快捷键
     # =====================================================================
@@ -310,19 +359,50 @@ class QtWorkbenchUiTest(unittest.TestCase):
     def test_shortcut_activation_wired(self):
         """快捷键确实绑到对应动作：R 触发重连、S 触发保存（不抛异常）。"""
         self.win._timer.stop()
-        for sc in self.win.shortcuts:
-            if sc.key().toString() == "R":
-                sc.activated.emit()
+        self._emit_shortcut("R")
         self.assertEqual(self.win.model.reconnect_calls, 1)
-        for sc in self.win.shortcuts:
-            if sc.key().toString() == "S":
-                sc.activated.emit()  # 无帧保存 → warning toast，不抛异常
+        self._emit_shortcut("S")  # 无帧保存 → warning toast，不抛异常
         self.assertEqual(self.win.toast.current_kind(), "warning")
+
+    def _emit_shortcut(self, seq: str):
+        for sc in self.win.shortcuts:
+            if sc.key().toString() == seq:
+                sc.activated.emit()
+                return
+        self.fail(f"未找到快捷键 {seq}")
+
+    def test_shortcut_ignored_while_typing_in_input(self):
+        """回归：焦点在文本输入框时，单字符快捷键不得劫持按键。
+
+        原缺陷：窗口级 QShortcut("S"/"R"/"1".."5") 会先于输入控件收到按键，
+        在硬件面板输入 IP 192.168.1.10 就会切模式、在类别名里打 s 就会保存。
+        """
+        self.win._timer.stop()
+        with mock.patch.object(type(self.win), "_focus_in_text_input",
+                              return_value=True):
+            self._emit_shortcut("S")
+            self._emit_shortcut("R")
+            self._emit_shortcut("3")
+        self.assertEqual(self.win.model.reconnect_calls, 0, "输入时不得触发重连")
+        self.assertEqual(self.win.mode, vision_modes.MODE_ORIGINAL,
+                         "输入时不得切换模式")
+        self.assertEqual(self.win.toast.current_kind(), "info",
+                         "输入时不得弹出保存提示")
+
+    def test_focus_helper_detects_line_edit(self):
+        """_focus_in_text_input() 必须能识别真实 QLineEdit 焦点。"""
+        from PySide6.QtWidgets import QLineEdit
+        self._show()
+        edit = QLineEdit(self.win)
+        edit.show()
+        edit.setFocus()
+        self.app.processEvents()
+        self.assertTrue(self.win._focus_in_text_input(),
+                        "QLineEdit 获得焦点时应判定为『正在输入』")
 
     # =====================================================================
     # 分辨率适配
     # =====================================================================
-
     def _widget_inside_parent(self, widget):
         """widget.geometry()（相对父控件的矩形）是否落在其父控件矩形内。
 
@@ -359,6 +439,49 @@ class QtWorkbenchUiTest(unittest.TestCase):
         h_large = self.win.video_view.height()
         self.assertGreater(h_large, h_small,
                            f"VideoView 高度应从 {h_small} 增至 {h_large}")
+
+    # =====================================================================
+    # 回归：帧号去重不得挡住状态同步
+    # =====================================================================
+
+    def test_stale_switches_to_placeholder_without_new_frame(self):
+        """回归：帧号没变时也必须切占位。
+
+        原缺陷：_update_frame 在"帧号未变"时直接 return，把占位判断和统计同步
+        一起跳过——停流后 3s 内状态灯不变、占位不出现，画面停在最后一帧。
+        """
+        self.win._timer.stop()
+        frame = np.full((48, 64, 3), 90, dtype=np.uint8)
+        self.win.model._set_frame(frame, num=1, received=1)
+        self.win._refresh()
+        self.assertEqual(self.win.video_view.render_state, "frame")
+
+        self.win.model._set_stale(True)  # 帧号不变，只是变陈旧
+        self.win._refresh()
+        self.assertNotEqual(self.win.video_view.render_state, "frame",
+                            "停流后应切到占位，而不是停住最后一帧")
+        self.assertEqual(self.win.stats["state"], "Reconnecting")
+
+    def test_resolution_follows_snapshot_when_ping_info_empty(self):
+        """回归：ping_info 为空（启动页连接）时，分辨率必须跟着快照更新。
+
+        原缺陷：st["width"]/["height"] 只读不写，走 ConnectionDialog 启动时
+        诊断区"分辨率"恒为 0x0，/ping 上报的值永远不生效。
+        """
+        from qt_client.main_window import MainWindow
+        win = MainWindow("http://fake/stream", "http://fake/ping", {})
+        try:
+            win._refresh()  # metrics 首次刷新前全是 None（占位状态）
+            self.assertEqual(win.metrics["res"], "0x0")
+            win.model._set_resolution(1280, 720)
+            win._refresh()
+            self.assertEqual(win.metrics["res"], "1280x720",
+                             "分辨率应随快照更新")
+            self.assertEqual(win.stats["width"], 1280)
+            self.assertEqual(win.stats["height"], 720)
+        finally:
+            win.model.stop()
+            win.close()
 
 
 class QtI18nUiTest(unittest.TestCase):

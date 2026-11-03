@@ -40,10 +40,15 @@ from PySide6.QtWidgets import QApplication
 
 import connection
 from qt_client.main_window import MainWindow
+from qt_client.version import VERSION_STR
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="PhoneVision Lab 桌面客户端（PySide6 工作台）")
+    # 版本号唯一来源是 qt_client/version.py；--version 供打包后的 EXE 与
+    # 故障排查使用（windowed EXE 没有终端，用户只能靠这个自证版本）。
+    parser.add_argument("--version", action="version",
+                        version=f"%(prog)s {VERSION_STR}")
     # 可选互斥组：无参数时不报错退出（双击启动页语义），有任一参数时二者互斥。
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--host", help="手机局域网 IP，如 192.168.2.14")
@@ -73,8 +78,11 @@ def _load_theme(app) -> None:
     try:
         from qt_client.resources import style_qss_path
         qss_path = style_qss_path()
-        app.setStyleSheet(open(qss_path, encoding="utf-8").read())
-    except FileNotFoundError:
+        # with + OSError：QSS 不存在/无权限/解码失败都降级到默认外观，
+        # 不让启动栈因为一个样式文件挂掉，也不留未关闭的文件句柄。
+        with open(qss_path, encoding="utf-8") as fh:
+            app.setStyleSheet(fh.read())
+    except OSError:
         print("警告: 找不到 style.qss，使用默认外观。")
 
 

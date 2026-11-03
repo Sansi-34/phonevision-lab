@@ -369,3 +369,112 @@ QLabel[textRole="diagValue"] {
 QLabel[textRole="diagValue"][diagState="success"] { color: #3DD68C; }
 QLabel[textRole="diagValue"][diagState="warning"] { color: #F5A524; }
 QLabel[textRole="diagValue"][diagState="error"]   { color: #F2645F; }
+
+/* ---------- 工作台标签页（数据集/训练/硬件/性能） ---------- */
+QTabWidget#workbenchTabs {
+    background-color: #10141D;
+    border: 1px solid #232A39;
+    border-radius: 10px;
+}
+QTabWidget#workbenchTabs::pane {
+    background-color: #10141D;
+    border: 1px solid #232A39;
+    border-radius: 8px;
+    top: -1px;
+}
+QTabWidget#workbenchTabs QTabBar::tab {
+    background-color: transparent;
+    color: #8A93A6;
+    padding: 6px 14px;
+    margin-right: 2px;
+    border: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    font-weight: 600;
+}
+QTabWidget#workbenchTabs QTabBar::tab:selected {
+    background-color: #161B26;
+    color: #E6EAF2;
+}
+QTabWidget#workbenchTabs QTabBar::tab:hover {
+    color: #E6EAF2;
+}
+
+/* ---------- 数据集 / 训练 / 硬件 / 性能 面板 ---------- */
+#datasetPanel, #trainPanel, #hardwarePanel, #perfPanel {
+    background-color: #161B26;
+    border: none;
+    border-radius: 8px;
+}
+/* 只读多行日志（训练日志、事件记录） */
+QTextEdit, QListWidget {
+    background-color: #0E1116;
+    border: 1px solid #232A39;
+    border-radius: 6px;
+    color: #C8D0DE;
+    font-family: "Consolas";
+    font-size: 8pt;
+    selection-background-color: #5B7CFA;
+}
+/* 输入框（控制器 IP 等） */
+QLineEdit {
+    background-color: #0E1116;
+    border: 1px solid #232A39;
+    border-radius: 6px;
+    color: #E6EAF2;
+    padding: 4px 8px;
+    selection-background-color: #5B7CFA;
+}
+QLineEdit:focus {
+    border: 1px solid #5B7CFA;
+}
+/* 下拉框 */
+QComboBox {
+    background-color: #0E1116;
+    border: 1px solid #232A39;
+    border-radius: 6px;
+    color: #E6EAF2;
+    padding: 3px 8px;
+    selection-background-color: #5B7CFA;
+}
+QComboBox:hover { border: 1px solid #3A4557; }
+QComboBox::drop-down {
+    border: none;
+    width: 16px;
+}
+QComboBox QAbstractItemView {
+    background-color: #161B26;
+    border: 1px solid #232A39;
+    color: #E6EAF2;
+    selection-background-color: #5B7CFA;
+}
+/* 复选框（自动控制开关） */
+QCheckBox {
+    color: #E6EAF2;
+    spacing: 6px;
+}
+QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #3A4557;
+    border-radius: 3px;
+    background-color: #0E1116;
+}
+QCheckBox::indicator:checked {
+    background-color: #5B7CFA;
+    border: 1px solid #5B7CFA;
+}
+/* 进度条 */
+QProgressBar {
+    background-color: #0E1116;
+    border: 1px solid #232A39;
+    border-radius: 6px;
+    text-align: center;
+    color: #8A93A6;
+    font-family: "Consolas";
+    font-size: 8pt;
+}
+QProgressBar::chunk {
+    background-color: #5B7CFA;
+    border-radius: 5px;
+}

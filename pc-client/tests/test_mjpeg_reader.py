@@ -21,6 +21,7 @@ PhoneVision Lab — MjpegReader 离线单元测试。
 import os
 import sys
 import threading
+import time
 import unittest
 from unittest import mock
 
@@ -203,6 +204,128 @@ class MjpegReaderOfflineTest(unittest.TestCase):
                 stats = reader.get_stats()
                 self.assertEqual(stats["received"], 0)
                 self.assertEqual(stats["invalid"], 1)
+
+
+class BlockingResponse(FakeResponse):
+    """iter_content 一直阻塞到 close() 被调用，模拟真实 socket 读。
+
+    用来验证 stop() 是"主动关闭连接打断读"，而不是干等 5s 读取超时。
+    """
+
+    def __init__(self):
+        super().__init__([])
+        self.released = threading.Event()
+        self.close_calls = 0
+
+    def iter_content(self, chunk_size=65536):
+        def gen():
+            # 阻塞到 stop() 关连接；随后像真实 requests 一样抛错，
+            # 由 MjpegReader._run 的异常分支吞掉并退出。
+            self.released.wait(timeout=30)
+            raise OSError("connection closed by stop()")
+            yield b""  # pragma: no cover - 让 gen 成为生成器
+        return gen()
+
+    def close(self):
+        self.close_calls += 1
+        self.closed = True
+        self.released.set()
+
+
+class MjpegReaderLifecycleTest(unittest.TestCase):
+    """start()/stop() 生命周期：线程必须能被及时停止，连接必须被关闭。"""
+
+    def test_stop_closes_response_and_joins_fast(self):
+        """stop() 必须关闭底层连接并快速退出线程。
+
+        原缺陷：stop() 只置 flag，读线程仍阻塞在 iter_content 的 socket read
+        里（最多 5s），join(3.0) 常态超时；重连时旧线程继续占着连接和带宽。
+        """
+        reader = mjpeg_reader.MjpegReader("http://127.0.0.1:8080/stream")
+        fake = BlockingResponse()
+        with mock.patch.object(mjpeg_reader.requests, "get", return_value=fake):
+            reader.start()
+            for _ in range(500):  # 等线程真正进入 iter_content
+                if reader.get_state() == "Streaming":
+                    break
+                time.sleep(0.01)
+            self.assertEqual(reader.get_state(), "Streaming",
+                             "线程应已建立连接并进入 Streaming")
+            started = time.monotonic()
+            reader.stop()
+            elapsed = time.monotonic() - started
+
+        self.assertTrue(fake.closed, "stop() 必须关闭底层连接以打断阻塞读")
+        self.assertLess(elapsed, 1.0, f"stop() 应快速返回，实耗 {elapsed:.2f}s")
+        self.assertFalse(reader._thread.is_alive(), "读线程必须已退出")
+
+    def test_http_error_closes_response(self):
+        """raise_for_status 抛错时也必须关闭连接。
+
+        原缺陷：finally 从 for 循环才开始，status 检查失败会漏关 stream=True
+        的连接，每失败一次重连就漏一个连接（靠 GC 兜底）。
+        """
+        class ErrorResponse(FakeResponse):
+            def raise_for_status(self):
+                raise RuntimeError("500 Server Error")
+
+        reader = mjpeg_reader.MjpegReader("http://127.0.0.1:8080/stream")
+        fake = ErrorResponse([])
+        with mock.patch.object(mjpeg_reader.requests, "get", return_value=fake):
+            with self.assertRaises(RuntimeError):
+                reader._stream_once()
+        self.assertTrue(fake.closed, "异常路径也必须关闭连接")
+        self.assertIsNone(reader._resp)
+
+    def test_missing_boundary_closes_response(self):
+        """Content-Type 没有 boundary 时抛 ValueError 且关闭连接。"""
+        class NoBoundaryResponse(FakeResponse):
+            def __init__(self):
+                super().__init__([])
+                self.headers = {"Content-Type": "text/plain"}
+
+        reader = mjpeg_reader.MjpegReader("http://127.0.0.1:8080/stream")
+        fake = NoBoundaryResponse()
+        with mock.patch.object(mjpeg_reader.requests, "get", return_value=fake):
+            with self.assertRaises(ValueError):
+                reader._stream_once()
+        self.assertTrue(fake.closed)
+
+    def test_503_raises_stream_not_ready(self):
+        """上游 503（相机尚未推流）应抛 StreamNotReady，走快重试而非秒级退避。"""
+        class NotReadyResponse(FakeResponse):
+            status_code = 503
+
+            def raise_for_status(self):  # 真实 requests 会在这里抛 503
+                raise RuntimeError("503 Server Error")
+
+        reader = mjpeg_reader.MjpegReader("http://127.0.0.1:8080/stream")
+        fake = NotReadyResponse([])
+        with mock.patch.object(mjpeg_reader.requests, "get", return_value=fake):
+            with self.assertRaises(mjpeg_reader.StreamNotReady):
+                reader._stream_once()
+        self.assertTrue(fake.closed, "503 路径也必须关闭连接")
+
+    def test_stream_not_ready_retries_fast(self):
+        """StreamNotReady 的重试间隔必须远小于断线退避（1s 起）。"""
+        reader = mjpeg_reader.MjpegReader("http://127.0.0.1:8080/stream")
+        calls = []
+
+        def fake_once():
+            calls.append(time.monotonic())
+            if len(calls) >= 3:
+                reader._stop_event.set()   # 第 3 次后收工
+            raise mjpeg_reader.StreamNotReady("camera starting")
+
+        with mock.patch.object(reader, "_stream_once", side_effect=fake_once):
+            started = time.monotonic()
+            reader._run()
+            elapsed = time.monotonic() - started
+
+        self.assertGreaterEqual(len(calls), 2)
+        # 两次快重试累计约 0.3s×2；若误用 1/2/3 秒退避这里会 >= 2s。
+        self.assertLess(elapsed, 1.5, f"503 重试过快/过慢，实耗 {elapsed:.2f}s")
+        self.assertEqual(reader.get_stats()["last_error"], "camera starting")
 
 
 if __name__ == "__main__":

@@ -95,6 +95,9 @@ class FakeAppModel:
         self.last_error = None
         self._ping_ok = True
         self._phone_fps = kw.get("phone_fps", 0.0)
+        # 分辨率可配置：验证"诊断区分辨率跟随快照"（ping_info 为空时初始 0x0）。
+        self._width = kw.get("width", 640)
+        self._height = kw.get("height", 480)
         # 调用计数：验证 UI 交互确实驱动到模型层
         self.reconnect_calls = 0
         self.mark_displayed_calls = 0
@@ -130,6 +133,11 @@ class FakeAppModel:
 
     def _set_device_name(self, name):
         self.device_name = name
+
+    def _set_resolution(self, width, height):
+        """设置快照里的分辨率（验证 UI 不把 0x0 写死后不再更新）。"""
+        self._width = width
+        self._height = height
 
     def get_latest_frame(self):
         # stale 时模型层返回 (None, None)，UI 走占位分支
@@ -168,7 +176,8 @@ class FakeAppModel:
         return dict(
             connection_state=self._state, device_name=self.device_name,
             phone_fps=self._phone_fps, receive_fps=0.0, display_fps=0.0,
-            width=640, height=480, average_jpeg_bytes=0.0, bandwidth_mbps=0.0,
+            width=self._width, height=self._height,
+            average_jpeg_bytes=0.0, bandwidth_mbps=0.0,
             received_frames=self._received, invalid_frames=0,
             estimated_dropped_frames=0,
             last_error=self.last_error, last_ping_time=None,
@@ -861,11 +870,20 @@ class QtLayoutContractTest(unittest.TestCase):
         #   1. diagnosticsToggleButton —— QSS 仍写 #diagnosticsToggle（旧名）
         #   2. toastBanner/videoFrame/videoPlaceholder/videoReconnectButton ——
         #      QSS 尚无对应选择器（QSS 契约#15 修复中）
+        # Qt 内部控件名（QScrollArea/QTabWidget 等自动创建的子控件，如
+        # ScrollLeftButton/ScrollRightButton）不属于本项目的样式契约，
+        # 与 qt_ 前缀一样显式跳过。
         in_flight_gaps = {"diagnosticsToggleButton", "toastBanner",
                           "videoFrame", "videoPlaceholder",
                           "videoReconnectButton"}
+        qt_internal_ids = {"ScrollLeftButton", "ScrollRightButton",
+                           "ScrollUpButton", "ScrollDownButton",
+                           "ScrollLeftCorner", "ScrollRightCorner",
+                           "ScrollBar", "ScrollView"}
         for live_id in live_ids:
             if live_id.startswith("qt_") or live_id in in_flight_gaps:
+                continue
+            if live_id in qt_internal_ids:
                 continue
             self.assertTrue(
                 live_id in id_selectors or live_id in attr_values,

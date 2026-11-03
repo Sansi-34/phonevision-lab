@@ -25,6 +25,15 @@ import requests
 # 若一帧超过该上限，视为异常帧跳过。
 _MAX_FRAME_BYTES = 5 * 1024 * 1024  # 5 MB
 
+# 手机端"相机还没开始推流"时返回 503。这不是断线，而是启动窗口
+# （用户点了开始推流，Camera2 还在开相机会话），用秒级退避会白等 6 秒，
+# 因此单独走快重试。
+_NOT_READY_RETRY_SECONDS = 0.3
+
+
+class StreamNotReady(RuntimeError):
+    """上游 503：相机尚未开始推流/正在启动。可立即重试，不算断线。"""
+
 # 字节常量
 _SOI = b"\xff\xd8"  # JPEG 起始标志
 _EOI = b"\xff\xd9"  # JPEG 结束标志
@@ -38,6 +47,8 @@ class MjpegReader:
         self._url = stream_url
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True, name="mjpeg-reader")
+        # 当前连接句柄：stop() 要先关它，才能真正打断 iter_content 里的阻塞读。
+        self._resp = None
 
         # ---- 共享状态（主线程读，读线程写）----
         self._lock = threading.Lock()
@@ -58,8 +69,20 @@ class MjpegReader:
         self._thread.start()
 
     def stop(self):
-        """请求停止，并等待线程退出。"""
+        """请求停止，并等待线程退出。
+
+        只置 flag 是不够的：读线程此时可能正阻塞在 iter_content() 的 socket
+        read 里（读超时 5s），join(3.0) 会常态超时，退出后旧连接还会被下一次
+        reconnect 继续占着带宽。因此先 close() 连接打断读，再 join。
+        requests 在连接被关闭后会让 iter_content 抛异常，_run 已吞掉并退出。
+        """
         self._stop_event.set()
+        resp = self._resp
+        if resp is not None:
+            try:
+                resp.close()
+            except Exception:  # noqa: BLE001 - 关闭连接阶段的异常不影响停止
+                pass
         if self._thread.is_alive():
             self._thread.join(timeout=3.0)
 
@@ -103,6 +126,13 @@ class MjpegReader:
             self._set_state("Connecting")
             try:
                 self._stream_once()
+            except StreamNotReady as e:
+                # 相机还在启动：连接本身是通的，不要按断线退避 1/2/3 秒。
+                self._set_state("Connecting")
+                self._set_last_error(str(e))
+                if self._stop_event.wait(_NOT_READY_RETRY_SECONDS):
+                    return
+                continue
             except Exception as e:  # noqa: BLE001 - 读线程吞掉所有异常继续重连
                 self._set_state("Reconnecting")
                 self._set_last_error(str(e))
@@ -119,31 +149,38 @@ class MjpegReader:
 
     def _stream_once(self):
         """建立一次连接并持续消费流，直到断开或停止。"""
-        resp = requests.get(
-            self._url,
-            stream=True,
-            timeout=(3.0, 5.0),  # (连接超时, 读取超时)
-            headers={"Connection": "keep-alive"},
-        )
-        resp.raise_for_status()
-
-        content_type = resp.headers.get("Content-Type", "")
-        boundary = self._extract_boundary(content_type)
-        if boundary is None:
-            resp.close()
-            raise ValueError(f"Content-Type 缺少 boundary: {content_type!r}")
-
-        # 状态改为 Streaming
-        self._set_state("Streaming")
-        # 连接成功：清空上次的错误，避免状态栏永久滞留旧错误
-        self._set_last_error(None)
-
-        # 用迭代器逐块读取，按 boundary 切分
-        boundary_delim = b"--" + boundary.encode("latin-1")
-        buffer = bytearray()
-        boundary_found = False  # 第一个 boundary 之前的内容（空 HTTP 体之前）忽略
-
+        resp = None
         try:
+            resp = requests.get(
+                self._url,
+                stream=True,
+                timeout=(3.0, 5.0),  # (连接超时, 读取超时)
+                headers={"Connection": "keep-alive"},
+            )
+            # 立刻登记：stop() 需要用这个句柄打断下面的阻塞读。
+            self._resp = resp
+            # 503 = 手机端相机还没开始推流（Android 端现在会明确返回它）。
+            # 用 getattr 兼容假 response（测试替身只实现必要接口）。
+            if getattr(resp, "status_code", 200) == 503:
+                raise StreamNotReady(
+                    "手机端尚未开始推流（HTTP 503），正在重试…")
+            resp.raise_for_status()
+
+            content_type = resp.headers.get("Content-Type", "")
+            boundary = self._extract_boundary(content_type)
+            if boundary is None:
+                raise ValueError(f"Content-Type 缺少 boundary: {content_type!r}")
+
+            # 状态改为 Streaming
+            self._set_state("Streaming")
+            # 连接成功：清空上次的错误，避免状态栏永久滞留旧错误
+            self._set_last_error(None)
+
+            # 用迭代器逐块读取，按 boundary 切分
+            boundary_delim = b"--" + boundary.encode("latin-1")
+            buffer = bytearray()
+            boundary_found = False  # 第一个 boundary 之前的内容（空 HTTP 体之前）忽略
+
             for chunk in resp.iter_content(chunk_size=65536):
                 if self._stop_event.is_set():
                     break
@@ -171,7 +208,14 @@ class MjpegReader:
 
                     self._handle_part(part)
         finally:
-            resp.close()
+            # 覆盖所有退出路径：正常结束、boundary 缺失、raise_for_status 抛错、
+            # 被 stop() 关连接。原先 finally 从 for 循环才开始，前两类会漏关连接。
+            self._resp = None
+            if resp is not None:
+                try:
+                    resp.close()
+                except Exception:  # noqa: BLE001 - 关闭连接失败不该掩盖真实异常
+                    pass
             # 流结束（正常断开或被停止），若仍在读则标记重连
             if not self._stop_event.is_set():
                 self._set_state("Reconnecting")
