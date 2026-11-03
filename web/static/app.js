@@ -236,6 +236,8 @@
 
     root.setAttribute("aria-busy", "true");
     root.innerHTML = "";
+    // 旧页面节点已丢弃：先断开滚动浮现的观察器，避免它持有已移除的 DOM。
+    if (window.PVL_REVEAL) window.PVL_REVEAL.reset();
 
     const module = window.PVL_PAGES && window.PVL_PAGES[route.name];
     if (!module || typeof module.render !== "function") {
@@ -251,6 +253,8 @@
       if (typeof result === "function") currentCleanup = result;
       document.title = "PhoneVision Lab · " + pageTitle(route.name);
       applyPageHeader(route.name);
+      // 页面内容已就绪：按结构挑选区块/卡片做滚动浮现（未启用动效时是空操作）
+      if (window.PVL_REVEAL) window.PVL_REVEAL.scan(root);
     } catch (error) {
       const info = describeError(error);
       root.innerHTML =

@@ -8,6 +8,18 @@
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/pages.css">
 <link rel="stylesheet" href="/workbench.css">
+<link rel="stylesheet" href="/reveal.css">
+<script>
+  // 滚动浮现的开关：必须在首次绘制前决定，否则元素会先显示再隐藏（闪一下）。
+  // 不支持 IntersectionObserver 或用户要求减少动效时不加类 —— 内容保持默认可见。
+  (function () {
+    try {
+      var ok = 'IntersectionObserver' in window &&
+        !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (ok) document.documentElement.classList.add('js-reveal');
+    } catch (error) { /* 动效失败不影响内容 */ }
+  })();
+</script>
 </head>
 <body>
 <a class="sr-only" href="#main-content">跳到主要内容</a>
@@ -121,6 +133,7 @@
 
 <script src="/courses.js"></script>
 <script src="/open-source.js"></script>
+<script src="/reveal.js"></script>
 <script src="/pages/home.js"></script>
 <script src="/pages/learn.js"></script>
 <script src="/pages/lab.js"></script>
