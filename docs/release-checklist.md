@@ -43,6 +43,11 @@ as P0-5x).
 - [ ] `git diff --check` is clean
 - [ ] Android builds when Android was touched: `cmd //c gradlew.bat assembleDebug`
       (JDK 17 + Android SDK on PATH)
+- [ ] Android JVM unit tests pass: `cmd //c gradlew.bat testDebugUnitTest`
+      (covers RuleEngine hysteresis/cooldown and the LatestFrameStore timeout
+      contract — the two places where a bug reaches real hardware or leaks a thread)
+- [ ] Release candidate workflow runs on `windows-latest` (the packaging script
+      calls `aapt2.exe` / `apksigner.bat`; it cannot run on a Linux runner)
 
 ## 3. Build artifacts
 

@@ -29,7 +29,10 @@ concurrency:
 jobs:
   candidate:
     name: Build debug + unsigned release candidates
-    runs-on: ubuntu-latest
+    # 必须是 Windows：android/scripts/build_release_candidate.ps1 直接调用
+    # aapt2.exe / apksigner.bat / gradlew.bat 并拼接反斜杠路径，在 Linux runner
+    # 上 `powershell -ExecutionPolicy` 也不存在（只有 pwsh，且不接受该参数）。
+    runs-on: windows-latest
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -49,15 +52,14 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Build candidates (debug + unsigned release APK/AAB)
+      - name: Run JVM unit tests
         working-directory: android
-        run: |
-          # 未提供签名环境变量 → 构建 unsigned 候选
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+        run: cmd /c gradlew.bat --no-daemon testDebugUnitTest
 
       - name: Run release candidate packaging script
         working-directory: android
+        # 脚本内部完成 assembleDebug / assembleRelease / bundleRelease、产物改名、
+        # aapt2 元数据核对、签名状态检查、SHA-256 与 build-info.json。
         run: powershell -ExecutionPolicy Bypass -File scripts/build_release_candidate.ps1
 
       - name: Upload Android candidates artifact
