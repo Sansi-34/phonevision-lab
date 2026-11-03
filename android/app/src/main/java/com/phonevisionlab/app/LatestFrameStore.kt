@@ -36,6 +36,9 @@ class LatestFrameStore {
     /** 条件：在 lock 上等待“frame 变为非空或更新” */
     private val updated: Condition = lock.newCondition()
 
+    /** 唤醒代数：wakeAll() 递增；getAfter() 发现代数变化立即返回 null（服务停止）。 */
+    private var wakeGeneration: Long = 0L
+
     /**
      * 写入一帧。若已有旧帧则直接覆盖（丢弃旧帧）。
      *
@@ -66,10 +69,16 @@ class LatestFrameStore {
     @Throws(InterruptedException::class)
     fun getAfter(fromSeq: Long, timeoutMs: Long): Frame? {
         lock.withLock {
+            // 进入等待时记下唤醒代数：若等待期间有人调用 wakeAll()（服务停止），
+            // 立刻返回 null 交给调用方检查"是否已关闭"，而不是被叫醒后继续等。
+            // 只 signalAll() 是不够的：读方醒来发现仍无新帧会再次 await，
+            // 于是"唤醒"变成空转，线程要等满 timeout 才可能退出。
+            val startGeneration = wakeGeneration
             // awaitNanos 可能被 signalAll() 或虚假唤醒提前返回，
             // 所以按“剩余时间”循环累减，直到真的超时。
             var remainingNs = TimeUnit.MILLISECONDS.toNanos(if (timeoutMs > 0L) timeoutMs else 0L)
             while (remainingNs > 0L) {
+                if (wakeGeneration != startGeneration) return null
                 val f = frame
                 // 当最新帧序号仍未超过 fromSeq 时，说明没有“新的”一帧，继续等待。
                 if (f != null && f.seq > fromSeq) return f
@@ -82,14 +91,18 @@ class LatestFrameStore {
     }
 
     /**
-     * 唤醒所有正阻塞在 [getAfter] 上的读方，但不改变帧缓存内容。
+     * 唤醒所有正阻塞在 [getAfter] 上的读方，让它们立刻返回 null。
      *
-     * 用途：服务停止时先“叫醒”读线程，读方从 [getAfter] 拿到 null 后立刻
-     * 检查“服务是否已关闭”并退出。之所以和 [clear] 分开：clear() 会丢帧并推进序号，
-     * 这里只负责唤醒，不改变数据本身。
+     * 用途：服务停止时先“叫醒”读线程，读方拿到 null 后立刻检查“服务是否已关闭”
+     * 并退出。实现上递增 [wakeGeneration] 再 signalAll()：只 signal 的话，
+     * 读方醒来看到仍无新帧会再次 await，“唤醒”等于空转。
+     * 与 [clear] 分开：clear() 会丢帧并推进序号，这里只负责终止等待、不改数据。
      */
     fun wakeAll() {
-        lock.withLock { updated.signalAll() }
+        lock.withLock {
+            wakeGeneration++
+            updated.signalAll()
+        }
     }
 
     /** 当前最新帧序号；未推流时返回 -1 */
