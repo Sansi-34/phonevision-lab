@@ -88,7 +88,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.material:material:1.14.0")
 
     // 轻量嵌入式 HTTP 服务器：负责 /ping 与 /stream 两个接口。
     implementation("org.nanohttpd:nanohttpd:2.3.1")
