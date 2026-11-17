@@ -49,8 +49,31 @@
     if (photo.naturalWidth) render();
     else note.textContent = '示例照片未能加载，你仍可通过下方入口开始学习。';
   }
-  range.addEventListener('input', function () {
+  function updateSplit() {
     comparison.style.setProperty('--split', range.value + '%');
     range.setAttribute('aria-valuetext', '边缘图占 ' + range.value + '%');
+  }
+  range.addEventListener('input', updateSplit);
+  let dragging = false;
+  function moveSplit(event) {
+    const bounds = comparison.getBoundingClientRect();
+    range.value = String(Math.round(Math.max(0, Math.min(100,
+      (event.clientX - bounds.left) / bounds.width * 100))));
+    updateSplit();
+  }
+  comparison.addEventListener('pointerdown', function (event) {
+    if (canvas.hidden || !event.isPrimary || event.button !== 0) return;
+    dragging = true;
+    comparison.setPointerCapture(event.pointerId);
+    moveSplit(event);
+  });
+  comparison.addEventListener('pointermove', function (event) {
+    if (dragging) moveSplit(event);
+  });
+  comparison.addEventListener('pointerup', function () { dragging = false; });
+  comparison.addEventListener('pointercancel', function () { dragging = false; });
+  comparison.addEventListener('lostpointercapture', function () { dragging = false; });
+  photo.addEventListener('dragstart', function (event) {
+    event.preventDefault();
   });
 })();
