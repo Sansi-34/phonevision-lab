@@ -4,6 +4,6 @@
 // 插件版本统一定义在这里并显式声明，子模块（app）无需重复写版本。
 
 plugins {
-    id("com.android.application") version "8.5.2" apply false
+    id("com.android.application") version "9.5.1" apply false
     id("org.jetbrains.kotlin.android") version "1.9.24" apply false
 }
