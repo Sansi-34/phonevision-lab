@@ -96,7 +96,7 @@ dependencies {
     // TensorFlow Lite：本机 AI 推理（V0-B）。
     // 版本 2.16.1 的 AAR minSdk=19，兼容本项目 minSdk 21（旧手机目标）。
     // 默认只用 CPU（见 Config.USE_NNAPI=false），不依赖 GPU/NPU 加速。
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite:2.17.0")
 
     testImplementation("junit:junit:4.13.2")
     // androidTest：真机仪器测试（推理引擎 / 模型导入 / 控制协议 / 预处理一致性）。
